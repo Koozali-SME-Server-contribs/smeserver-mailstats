@@ -192,7 +192,7 @@ if __name__ == "__main__":
 
 	hello_string = "Mailstats version:"+Mailstats_version+" Chameleon version:"+chameleon_version+" On Python:"+python_version+" at "+formatted_datetime
 	print(hello_string)
-	num_hours = 24  # Represents hours from 0 to 23 - adds extra one for column totals
+	num_hours = 25  # Represents hours from 0 to 23 - adds extra one for column totals and another for percentages
 	sorted_log_dict = read_and_filter_yesterday_log('/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/current.log')
 	columnHeaders = ['Count','WebMail','Local','MailMan','Relay','DMARC','Virus','RBL/DNS','Geoip.','Non.Conf.','Karma','Rej.Load','Del.Spam','Qued.Spam?','  Ham','TOTALS','PERCENT']
 	# dict for each colum identifying plugin that increments count
@@ -360,11 +360,13 @@ if __name__ == "__main__":
 	template = PageTemplate(template_content)
 
 	# Render the template with the 2D array data and column headers
-	rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, reporting_date=formatted_yesterday)
+	rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, reporting_date=formatted_yesterday, title=hello_string)
 
 	# Write the rendered HTML to a file
 	output_path = '/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/mailstats_for_'+formatted_yesterday+'.html'
+	output_path = output_path.replace(' ','_')
 	with open(output_path, 'w') as output_file:
+		
 		output_file.write(rendered_html)
 
 	print(f"Rendered HTML saved to {output_path}")

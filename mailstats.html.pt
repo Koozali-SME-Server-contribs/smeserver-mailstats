@@ -1,13 +1,13 @@
 <html>
 <head>
-    <title>2D Array Display</title>
+    <title>${title}</title>
 </head>
 <body>
-    <h1>2D Array Contents</h1>
+    <h1>${title}</h1>
     <table border="1">
         <thead>
             <tr>
-                <th>Hour</th>
+                <th>Date/Hour</th>
                 <th tal:repeat="header column_headers" tal:content="header">Header</th>
             </tr>
         </thead>
