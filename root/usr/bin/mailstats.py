@@ -8,7 +8,11 @@
 # and html output added
 #
 import datetime
-import datetime
+import sys
+from chameleon import PageTemplateFile,PageTemplate
+import pkg_resources
+
+Mailstats_version = '1.2'
 
 def truncate_microseconds(timestamp):
     # Split timestamp into main part and microseconds
@@ -40,12 +44,13 @@ def read_and_filter_yesterday_log(file_path):
     log_entries = []
     with open(file_path, 'r') as file:
         for line in file:
-            parts = line.strip().split()
-            if parts:
-                # Combine parts to form the complete timestamp
-                timestamp = ' '.join(parts[:2])
-                data = ' '.join(parts[2:])  # The rest of the line after date and time
-                log_entries.append((timestamp, data))
+            if '`' in line:
+                parts = line.split(' ')
+                if parts:
+                    # Combine parts to form the complete timestamp
+                    timestamp = ' '.join(parts[:2])
+                    data = ' '.join(parts[2:])  # The rest of the line after date and time
+                    log_entries.append((timestamp, data))
     
     # Filter the entries to keep only those from yesterday
     filtered_entries = filter_yesterdays_entries(log_entries)
@@ -61,38 +66,68 @@ def read_and_filter_yesterday_log(file_path):
 def parse_data(data):
     # Split data string into parts and map to named fields.
     # Adjust the field names and parsing logic according to your data format.
+    # Split at the backtick - before it fields split at space, after, fields split at tab
     parts = data.split('`')
-    fields = parts[1].strip().split('\t') if len(parts) > 1 else []
-    # Example mapping:
-    return {
-        'id': fields[0],
-        'action': fields[1] if len(fields) > 0 else None,
-        'logterse': fields[2] if len(fields) > 1 else None,
-        'reversequote': fields[3] if len(fields) > 2 else None,
-        'ip': fields[4] if len(fields) > 3 else None,
-        'sendurl': fields[5] if len(fields) > 4 else None,
-        'sendurl1': fields[6] if len(fields) > 5 else None,
-        'error-plugin': fields[6] if len(fields) > 5 else None,
-        'from-email': fields[7] if len(fields) > 6 else None,
-        'error-reason': fields[7] if len(fields) > 6 else None,
-        'to-email': fields[8] if len(fields) > 7 else None,
-        'action1': fields[9] if len(fields) > 8 else None,
-        'sendurl2': fields[10] if len(fields) > 9 else None,
-        'spam-yes-no': fields[11] if len(fields) > 10 else None,
-        'spam-score': fields[12] if len(fields) > 11 else None,
-        'spam-score-reqd': fields[13] if len(fields) > 12 else None,
-        'autolearn': fields[14] if len(fields) > 13 else None,
-        'logterse': fields[15] if len(fields) > 14 else None,
-        'logterse': fields[16] if len(fields) > 15 else None
-        # Add more fields as necessary
-    }
+    #print(parts[0],parts[1])
+    fields1 = parts[0].strip().split() if len(parts) > 0 else []
+    fields2 = parts[1].split('\t') if len(parts) > 1 else []
+    # then merge them
+    fields = fields1 + fields2
+#    if fields[8] != 'queued':
+#    i = 0
+#    print(f"len:{len(fields)}")
+#    for part in fields:
+#        print(f"{i}: {part}")
+#        i  = i +1
+#    quit()
+    # and mapping:
+    try:
+        return_dict = {
+            'id': fields[0] if len(fields) > 0 else None,
+            'action': fields[1] if len(fields) > 1 else None,
+            'logterse': fields[2] if len(fields) > 2 else None,
+            'ip': fields[3] if len(fields) > 3 else None,
+            'sendurl': fields[4] if len(fields) > 4 else None,
+            'sendurl1': fields[5] if len(fields) > 5 else None,
+            'from-email': fields[6] if len(fields) > 6 else None,
+            'error-reason': fields[6] if len(fields) > 6 else None,
+            'to-email': fields[7] if len(fields) > 7 else None,
+            'error-plugin': fields[8] if len(fields) > 8 else None,
+            'action1': fields[8] if len(fields) > 8 else None,
+            'error-number' : fields[9] if len(fields) > 9 else None,
+            'sender': fields[10] if len(fields) > 10 else None,
+            'error-msg' :fields[10] if len(fields) > 10 else None,
+            'spam-status': fields[11] if len(fields) > 11 else None,
+            'error-result': fields[11] if len(fields) > 11 else None,
+            # Add more fields as necessary
+        }
+    except:
+        #print(f"error:len:{len(fields)}")
+        return_dict = {}    
+    return return_dict
 
-
-# Example usage
-sorted_log_dict = read_and_filter_yesterday_log('/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/current.log')
-#print(sorted_log_dict)
-
-for timestamp, data in sorted_log_dict.items():
-    print(f"{timestamp} IP = {data['ip']}")
+if __name__ == "__main__":
+    try:
+        chameleon_version = pkg_resources.get_distribution("Chameleon").version
+    except pkg_resources.DistributionNotFound:
+        chameleon_version = "Version information not available"
+    python_version = sys.version
+    python_version = python_version[:8]
+    current_datetime = datetime.datetime.now()
+    formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M")
+    hello_string = "Mailstats version:"+Mailstats_version+" Chameleon version:"+chameleon_version+" On Python:"+python_version+" at "+formatted_datetime
+    print(hello_string)
+    sorted_log_dict = read_and_filter_yesterday_log('/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/current.log')
+    #print(sorted_log_dict)
+    i = 1
+    for timestamp, data in sorted_log_dict.items():
+        if data['action'] == '(deny)':
+            error = data['error-plugin']
+            msg = data['error-msg']
+        else:
+            error = ""
+            msg = ""
+        print(f"{i}: {timestamp} IP = {data['ip']} Result:{data['action']} {error} {msg}" )
+        i = i + 1
 
 
