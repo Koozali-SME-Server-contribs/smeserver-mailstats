@@ -31,11 +31,12 @@ RBLDNS = 7
 Geoip = 8
 NonConf = 9
 RejLoad = 10
-DelSpam = 11
-QuedSpam = 12
-Ham = 13
-TOTALS = 14 
-PERCENT = 15
+Karma = 11
+DelSpam = 12
+QuedSpam = 13
+Ham = 14
+TOTALS = 15
+PERCENT = 16
 ColTotals = 24
 
 def is_private_ip(ip):
@@ -163,6 +164,19 @@ def initialize_2d_array(num_hours, column_headers_len):
     num_hours += 1
     return [[0] * column_headers_len for _ in range(num_hours)]
 
+def search_2d_list(target, data):
+    """
+    Search for a target string in a 2D list of variable-length lists of strings.
+
+    :param target: str, the string to search for
+    :param data: list of lists of str, the 2D list to search
+    :return: int, the row number where the target string is found, or -1 if not found
+    """
+    for row_idx, row in enumerate(data):
+        if target in row:
+            return row_idx
+    return -1  # Return -1 if not found
+
     
 if __name__ == "__main__":
 	try:
@@ -180,24 +194,31 @@ if __name__ == "__main__":
 	print(hello_string)
 	num_hours = 24  # Represents hours from 0 to 23 - adds extra one for column totals
 	sorted_log_dict = read_and_filter_yesterday_log('/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/current.log')
-	columnHeaders = ['Count','WebMail','Local','MailMan','Relay','DMARC','Virus','RBL/DNS','Geoip.','Non.Conf.','Rej.Load','Del.Spam','Qued.Spam?','  Ham','TOTALS','PERCENT']
+	columnHeaders = ['Count','WebMail','Local','MailMan','Relay','DMARC','Virus','RBL/DNS','Geoip.','Non.Conf.','Karma','Rej.Load','Del.Spam','Qued.Spam?','  Ham','TOTALS','PERCENT']
 	# dict for each colum identifying plugin that increments count
-	columnPlugin = [None] * 16
+	columnPlugin = [''] * 17
 	columnPlugin[Hour] = [] 
 	columnPlugin[WebMail] = []
 	columnPlugin[Local] = [] 
 	columnPlugin[MailMan] = []
-	columnPlugin[DMARC] = [] 
-	columnPlugin[Virus] = [] 
-	columnPlugin[RBLDNS] = []
-	columnPlugin[Geoip] = [] 
-	columnPlugin[NonConf] = []
-	columnPlugin[RejLoad] = []
+	columnPlugin[DMARC] = ['dmarc'] 
+	columnPlugin[Virus] = ['pattern_filter', 'virus::pattern_filter','virus::clamav'] 
+	columnPlugin[RBLDNS] = ['rhsbl', 'dnsbl','uribl']
+	columnPlugin[Geoip] = ['check_badcountries'] 
+	columnPlugin[NonConf] = ['check_earlytalker','check_relay','check_norelay', 'require_resolvable_fromhost'
+                             ,'check_basicheaders','check_badmailfrom','check_badrcptto_patterns'
+                             ,'check_badrcptto','check_spamhelo','check_goodrcptto extn','rcpt_ok'
+                             ,'check_goodrcptto','check_smtp_forward','count_unrecognized_commands','tls','auth::auth_cvm_unix_local'
+                             ,'auth::auth_imap', 'earlytalker','resolvable_fromhost','relay','headers','mailfrom','badrcptto','helo'
+                             ,'check_smtp_forward','sender_permitted_from']
+	columnPlugin[RejLoad] = ['loadcheck']
 	columnPlugin[DelSpam] = []
 	columnPlugin[QuedSpam] = []
 	columnPlugin[Ham] = [] 
 	columnPlugin[TOTALS] = []
 	columnPlugin[PERCENT] = []
+	columnPlugin[Karma] = ['karma']
+            
 	columnHeaders_len = len(columnHeaders)
 	columnCounts_2d = initialize_2d_array(num_hours, columnHeaders_len)
 	
@@ -223,10 +244,10 @@ if __name__ == "__main__":
 		if data['action'] == '(deny)':
 			error = data['error-plugin']
 			msg = data['error-msg']
+			print(f"{i}: {timestamp} IP = {data['ip']} Result:{data['action']} {error} {msg}" )
 		else:
 			error = ""
 			msg = ""
-		#print(f"{i}: {timestamp} IP = {data['ip']} Result:{data['action']} {error} {msg}" )
 		i += 1
 
 		# Count of in which hour it falls      
@@ -314,7 +335,16 @@ if __name__ == "__main__":
 				columnCounts_2d[hour][WebMail] += 1
 				columnCounts_2d[ColTotals][WebMail] += 1
 			
-		
+		if data ['action'] == '(deny)' and data['error-plugin']:
+			print(f"Found plugin {data['error-plugin']}")
+			if data['error-plugin']:
+				row = search_2d_list(data['error-plugin'],columnPlugin)
+				if not row == -1:
+					print(f"Found row: {row}")
+					columnCounts_2d[hour][row] += 1
+					columnCounts_2d[ColTotals][row] += 1
+
+			
 	#Now increment the column which the plugin name indicates
 			
 	#Now apply the results to the chameleon template
