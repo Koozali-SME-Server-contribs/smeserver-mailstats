@@ -7,12 +7,56 @@
 # Re-written in python from Mailstats.pl (Perl) to conform to SME11 / Postfix / qpsmtpd log formats
 # and html output added
 #
+# Todo
+# 1. Make "yesterday" parameterised
+#
 import datetime
 import sys
 from chameleon import PageTemplateFile,PageTemplate
 import pkg_resources
+import re
+import ipaddress
 
 Mailstats_version = '1.2'
+
+# Column numbering
+Hour = 0
+WebMail = 1
+Local = 2
+MailMan = 3
+Relay = 4
+DMARC = 5
+Virus = 6
+RBLDNS = 7
+Geoip = 8
+NonConf = 9
+RejLoad = 10
+DelSpam = 11
+QuedSpam = 12
+Ham = 13
+TOTALS = 14 
+PERCENT = 15
+ColTotals = 24
+
+def is_private_ip(ip):
+	try:
+		# Convert string to an IPv4Address object
+		ip_addr = ipaddress.ip_address(ip)
+	except ValueError:
+		return False
+	# Define private IP ranges
+	private_ranges = [
+		ipaddress.ip_network('10.0.0.0/8'),
+		ipaddress.ip_network('172.16.0.0/12'),
+		ipaddress.ip_network('192.168.0.0/16'),
+	]
+
+	# Check if the IP address is within any of these ranges
+	for private_range in private_ranges:
+		if ip_addr in private_range:
+			return True
+
+	return False
 
 def truncate_microseconds(timestamp):
     # Split timestamp into main part and microseconds
@@ -83,22 +127,22 @@ def parse_data(data):
     # and mapping:
     try:
         return_dict = {
-            'id': fields[0] if len(fields) > 0 else None,
-            'action': fields[1] if len(fields) > 1 else None,
-            'logterse': fields[2] if len(fields) > 2 else None,
-            'ip': fields[3] if len(fields) > 3 else None,
-            'sendurl': fields[4] if len(fields) > 4 else None,
-            'sendurl1': fields[5] if len(fields) > 5 else None,
-            'from-email': fields[6] if len(fields) > 6 else None,
-            'error-reason': fields[6] if len(fields) > 6 else None,
-            'to-email': fields[7] if len(fields) > 7 else None,
-            'error-plugin': fields[8] if len(fields) > 8 else None,
-            'action1': fields[8] if len(fields) > 8 else None,
-            'error-number' : fields[9] if len(fields) > 9 else None,
-            'sender': fields[10] if len(fields) > 10 else None,
-            'error-msg' :fields[10] if len(fields) > 10 else None,
-            'spam-status': fields[11] if len(fields) > 11 else None,
-            'error-result': fields[11] if len(fields) > 11 else None,
+            'id': fields[0].strip() if len(fields) > 0 else None,
+            'action': fields[1].strip() if len(fields) > 1 else None,
+            'logterse': fields[2].strip() if len(fields) > 2 else None,
+            'ip': fields[3].strip() if len(fields) > 3 else None,
+            'sendurl': fields[4].strip() if len(fields) > 4 else None,
+            'sendurl1': fields[5].strip() if len(fields) > 5 else None,
+            'from-email': fields[6].strip() if len(fields) > 6 else None,
+            'error-reason': fields[6].strip() if len(fields) > 6 else None,
+            'to-email': fields[7].strip() if len(fields) > 7 else None,
+            'error-plugin': fields[8].strip() if len(fields) > 8 else None,
+            'action1': fields[8].strip() if len(fields) > 8 else None,
+            'error-number' : fields[9].strip() if len(fields) > 9 else None,
+            'sender': fields[10].strip() if len(fields) > 10 else None,
+            'error-msg' :fields[10].strip() if len(fields) > 10 else None,
+            'spam-status': fields[11].strip() if len(fields) > 11 else None,
+            'error-result': fields[11].strip() if len(fields) > 11 else None,
             # Add more fields as necessary
         }
     except:
@@ -106,28 +150,192 @@ def parse_data(data):
         return_dict = {}    
     return return_dict
 
+def count_entries_by_hour(log_entries):
+    hourly_counts = defaultdict(int)
+    for entry in log_entries:
+        # Extract hour from the timestamp
+        timestamp = entry['timestamp']
+        hour = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H')
+        hourly_counts[hour] += 1
+    return hourly_counts
+
+def initialize_2d_array(num_hours, column_headers_len):
+    num_hours += 1
+    return [[0] * column_headers_len for _ in range(num_hours)]
+
+    
 if __name__ == "__main__":
-    try:
-        chameleon_version = pkg_resources.get_distribution("Chameleon").version
-    except pkg_resources.DistributionNotFound:
-        chameleon_version = "Version information not available"
-    python_version = sys.version
-    python_version = python_version[:8]
-    current_datetime = datetime.datetime.now()
-    formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M")
-    hello_string = "Mailstats version:"+Mailstats_version+" Chameleon version:"+chameleon_version+" On Python:"+python_version+" at "+formatted_datetime
-    print(hello_string)
-    sorted_log_dict = read_and_filter_yesterday_log('/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/current.log')
-    #print(sorted_log_dict)
-    i = 1
-    for timestamp, data in sorted_log_dict.items():
-        if data['action'] == '(deny)':
-            error = data['error-plugin']
-            msg = data['error-msg']
-        else:
-            error = ""
-            msg = ""
-        print(f"{i}: {timestamp} IP = {data['ip']} Result:{data['action']} {error} {msg}" )
-        i = i + 1
+	try:
+		chameleon_version = pkg_resources.get_distribution("Chameleon").version
+	except pkg_resources.DistributionNotFound:
+		chameleon_version = "Version information not available"
+	python_version = sys.version
+	python_version = python_version[:8]
+	current_datetime = datetime.datetime.now()
+	formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M")
+	yesterday = (datetime.datetime.now() - datetime.timedelta(days=1)).date()
+	formatted_yesterday = yesterday.strftime("%Y-%m-%d %H:%M")
+
+	hello_string = "Mailstats version:"+Mailstats_version+" Chameleon version:"+chameleon_version+" On Python:"+python_version+" at "+formatted_datetime
+	print(hello_string)
+	num_hours = 24  # Represents hours from 0 to 23 - adds extra one for column totals
+	sorted_log_dict = read_and_filter_yesterday_log('/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/current.log')
+	columnHeaders = ['Count','WebMail','Local','MailMan','Relay','DMARC','Virus','RBL/DNS','Geoip.','Non.Conf.','Rej.Load','Del.Spam','Qued.Spam?','  Ham','TOTALS','PERCENT']
+	# dict for each colum identifying plugin that increments count
+	columnPlugin = [None] * 16
+	columnPlugin[Hour] = [] 
+	columnPlugin[WebMail] = []
+	columnPlugin[Local] = [] 
+	columnPlugin[MailMan] = []
+	columnPlugin[DMARC] = [] 
+	columnPlugin[Virus] = [] 
+	columnPlugin[RBLDNS] = []
+	columnPlugin[Geoip] = [] 
+	columnPlugin[NonConf] = []
+	columnPlugin[RejLoad] = []
+	columnPlugin[DelSpam] = []
+	columnPlugin[QuedSpam] = []
+	columnPlugin[Ham] = [] 
+	columnPlugin[TOTALS] = []
+	columnPlugin[PERCENT] = []
+	columnHeaders_len = len(columnHeaders)
+	columnCounts_2d = initialize_2d_array(num_hours, columnHeaders_len)
+	
+	#From SMEServer DB
+	DomainName = 'bjsystems.co.uk' #  $cdb->get('DomainName')->value;
+	RHSenabled = True  #( $cdb->get('qpsmtpd')->prop('RHSBL') eq 'enabled' );
+	DNSenabled = True  #( $cdb->get('qpsmtpd')->prop('DNSBL') eq 'enabled' );
+	SARejectLevel = 12  #$cdb->get('spamassassin')->prop('RejectLevel');
+	SATagLevel = 4  #$cdb->get('spamassassin')->prop('TagLevel');
+	
+	FetchmailIP = '127.0.0.200';       #Apparent Ip address of fetchmail deliveries
+	WebmailIP = '127.0.0.1';           #Apparent Ip of Webmail sender
+	localhost = 'localhost';           #Apparent sender for webmail
+	FETCHMAIL = 'FETCHMAIL';    #Sender from fetchmail when Ip address not 127.0.0.200 - when qpsmtpd denies the email
+	MAILMAN = "bounces";        #sender when mailman sending when orig is localhost
+	DMARCDomain="dmarc"; 				#Pattern to recognised DMARC sent emails (this not very reliable, as the email address could be anything)
+	DMARCOkPattern="dmarc: pass";  #Pattern to use to detect DMARC approval
 
 
+	i = 1
+	for timestamp, data in sorted_log_dict.items():
+
+		if data['action'] == '(deny)':
+			error = data['error-plugin']
+			msg = data['error-msg']
+		else:
+			error = ""
+			msg = ""
+		#print(f"{i}: {timestamp} IP = {data['ip']} Result:{data['action']} {error} {msg}" )
+		i += 1
+
+		# Count of in which hour it falls      
+		#hour = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H')
+		# Parse the timestamp string into a datetime object
+		dt = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+		hour = dt.hour
+
+		# Increment Count in which headings it falls
+		#Hourly count and column total
+		columnCounts_2d[hour][Hour] += 1
+		columnCounts_2d[ColTotals][Hour] += 1
+		#Row Totals
+		columnCounts_2d[hour][TOTALS] += 1
+		#Total totals
+		columnCounts_2d[ColTotals][TOTALS] += 1
+		#Queued email
+		if data['action'] == '(queue)':
+			columnCounts_2d[hour][Ham] += 1
+			columnCounts_2d[ColTotals][Ham] += 1
+		#spamassasin
+		if data['spam-status'].lower().startswith('yes'):
+			#Extract other parameters from this string
+			# example: Yes, score=10.3 required=4.0 autolearn=disable
+			spam_pattern = r'score=([\d.]+)\s+required=([\d.]+)'
+			match = re.search(spam_pattern, data['spam-status'])
+			if match:
+				score = float(match.group(1))
+				required = float(match.group(2))
+				print(f"{data['spam-status']} / {score} {required}")
+				if score >= SARejectLevel:
+					columnCounts_2d[hour][DelSpam] += 1
+					columnCounts_2d[ColTotals][DelSpam] += 1
+				elif score >= required:
+					columnCounts_2d[hour][QuedSpam] += 1
+					columnCounts_2d[ColTotals][QuedSpam] += 1
+		#Local send
+		elif DomainName in data['sendurl']:
+			columnCounts_2d[hour][Local] += 1
+			columnCounts_2d[ColTotals][Local] += 1
+
+		#Relay or webmail
+		elif not is_private_ip(data['ip']) and is_private_ip(data['sendurl1']) and data['action1'] == 'queued':
+			#Relay
+			if data['action1'] == 'queued':
+				columnCounts_2d[hour][Relay] += 1
+				columnCounts_2d[ColTotals][Relay] += 1
+		elif WebmailIP in data['sendurl1'] and not is_private_ip(data['ip']):
+			#webmail
+			columnCounts_2d[hour][WebMail] += 1
+			columnCounts_2d[ColTotals][WebMail] += 1
+			
+		elif localhost in data['sendurl']:
+			# but not if it comes from fetchmail
+			if not FETCHMAIL in data['sendurl1']:
+				# might still be from mailman here
+				if MAILMAN in data['sendurl1']:
+					#$mailmansendcount++;
+					#$localsendtotal++;
+					columnCounts_2d[hour][MailMan] += 1
+					columnCounts_2d[ColTotals][MailMan] += 1
+					#$counts{$abshour}{$CATMAILMAN}++;
+					#$localflag = 1;
+				else:
+					#Or sent to the DMARC server
+					#check for email address in $DMARC_Report_emails string
+					#my $logemail = $log_items[4];
+					if DMARCDomain in data['from-email']: #(index($DMARC_Report_emails,$logemail)>=0) or 
+						#$localsendtotal++;
+						#$DMARCSendCount++;
+						localflag = 1;
+					else:
+						# ignore incoming localhost spoofs
+						if not 'msg denied before queued' in data['error-msg']:
+							#Webmail
+							#$localflag = 1;
+							#$WebMailsendtotal++;
+							columnCounts_2d[hour][WebMail] += 1
+							columnCounts_2d[ColTotals][WebMail] += 1
+							#$WebMailflag = 1;
+			else:
+				#$localflag = 1;
+				#$WebMailsendtotal++;
+				#$WebMailflag = 1;
+				columnCounts_2d[hour][WebMail] += 1
+				columnCounts_2d[ColTotals][WebMail] += 1
+			
+		
+	#Now increment the column which the plugin name indicates
+			
+	#Now apply the results to the chameleon template
+
+	# Path to the template file
+	template_path = '/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/mailstats.html.pt'
+
+	# Load the template
+	with open(template_path, 'r') as template_file:
+		template_content = template_file.read()
+
+	# Create a Chameleon template instance
+	template = PageTemplate(template_content)
+
+	# Render the template with the 2D array data and column headers
+	rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, reporting_date=formatted_yesterday)
+
+	# Write the rendered HTML to a file
+	output_path = '/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/mailstats_for_'+formatted_yesterday+'.html'
+	with open(output_path, 'w') as output_file:
+		output_file.write(rendered_html)
+
+	print(f"Rendered HTML saved to {output_path}")
+    
