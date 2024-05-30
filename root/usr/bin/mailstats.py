@@ -160,8 +160,9 @@ def count_entries_by_hour(log_entries):
         hourly_counts[hour] += 1
     return hourly_counts
 
-def initialize_2d_array(num_hours, column_headers_len):
-    num_hours += 1
+def initialize_2d_array(num_hours, column_headers_len,reporting_date):
+    num_hours += 1  # Adjust for the zeroth hour
+    # Initialize the 2D list with zeroes
     return [[0] * column_headers_len for _ in range(num_hours)]
 
 def search_2d_list(target, data):
@@ -188,10 +189,27 @@ if __name__ == "__main__":
 	current_datetime = datetime.datetime.now()
 	formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M")
 	yesterday = (datetime.datetime.now() - datetime.timedelta(days=1)).date()
-	formatted_yesterday = yesterday.strftime("%Y-%m-%d %H:%M")
+	formatted_yesterday = yesterday.strftime("%Y-%m-%d")
 
-	hello_string = "Mailstats version:"+Mailstats_version+" Chameleon version:"+chameleon_version+" On Python:"+python_version+" at "+formatted_datetime
+	#From SMEServer DB
+	DomainName = 'bjsystems.co.uk' #  $cdb->get('DomainName')->value;
+	RHSenabled = True  #( $cdb->get('qpsmtpd')->prop('RHSBL') eq 'enabled' );
+	DNSenabled = True  #( $cdb->get('qpsmtpd')->prop('DNSBL') eq 'enabled' );
+	SARejectLevel = 12  #$cdb->get('spamassassin')->prop('RejectLevel');
+	SATagLevel = 4  #$cdb->get('spamassassin')->prop('TagLevel');
+	
+	FetchmailIP = '127.0.0.200';       #Apparent Ip address of fetchmail deliveries
+	WebmailIP = '127.0.0.1';           #Apparent Ip of Webmail sender
+	localhost = 'localhost';           #Apparent sender for webmail
+	FETCHMAIL = 'FETCHMAIL';    #Sender from fetchmail when Ip address not 127.0.0.200 - when qpsmtpd denies the email
+	MAILMAN = "bounces";        #sender when mailman sending when orig is localhost
+	DMARCDomain="dmarc"; 				#Pattern to recognised DMARC sent emails (this not very reliable, as the email address could be anything)
+	DMARCOkPattern="dmarc: pass";  #Pattern to use to detect DMARC approval
+	hello_string = "Mailstats:"+Mailstats_version+' for '+DomainName+" at "+formatted_datetime
 	print(hello_string)
+	version_string = "Chameleon:"+chameleon_version+" Python:"+python_version
+	print(version_string)
+
 	num_hours = 25  # Represents hours from 0 to 23 - adds extra one for column totals and another for percentages
 	sorted_log_dict = read_and_filter_yesterday_log('/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/current.log')
 	columnHeaders = ['Count','WebMail','Local','MailMan','Relay','DMARC','Virus','RBL/DNS','Geoip.','Non.Conf.','Karma','Rej.Load','Del.Spam','Qued.Spam?','  Ham','TOTALS','PERCENT']
@@ -220,22 +238,8 @@ if __name__ == "__main__":
 	columnPlugin[Karma] = ['karma']
             
 	columnHeaders_len = len(columnHeaders)
-	columnCounts_2d = initialize_2d_array(num_hours, columnHeaders_len)
+	columnCounts_2d = initialize_2d_array(num_hours, columnHeaders_len,formatted_yesterday)
 	
-	#From SMEServer DB
-	DomainName = 'bjsystems.co.uk' #  $cdb->get('DomainName')->value;
-	RHSenabled = True  #( $cdb->get('qpsmtpd')->prop('RHSBL') eq 'enabled' );
-	DNSenabled = True  #( $cdb->get('qpsmtpd')->prop('DNSBL') eq 'enabled' );
-	SARejectLevel = 12  #$cdb->get('spamassassin')->prop('RejectLevel');
-	SATagLevel = 4  #$cdb->get('spamassassin')->prop('TagLevel');
-	
-	FetchmailIP = '127.0.0.200';       #Apparent Ip address of fetchmail deliveries
-	WebmailIP = '127.0.0.1';           #Apparent Ip of Webmail sender
-	localhost = 'localhost';           #Apparent sender for webmail
-	FETCHMAIL = 'FETCHMAIL';    #Sender from fetchmail when Ip address not 127.0.0.200 - when qpsmtpd denies the email
-	MAILMAN = "bounces";        #sender when mailman sending when orig is localhost
-	DMARCDomain="dmarc"; 				#Pattern to recognised DMARC sent emails (this not very reliable, as the email address could be anything)
-	DMARCOkPattern="dmarc: pass";  #Pattern to use to detect DMARC approval
 
 
 	i = 1
@@ -360,7 +364,7 @@ if __name__ == "__main__":
 	template = PageTemplate(template_content)
 
 	# Render the template with the 2D array data and column headers
-	rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, reporting_date=formatted_yesterday, title=hello_string)
+	rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, reporting_date=formatted_yesterday, title=hello_string, version=version_string)
 
 	# Write the rendered HTML to a file
 	output_path = '/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/mailstats_for_'+formatted_yesterday+'.html'

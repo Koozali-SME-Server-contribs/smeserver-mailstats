@@ -7,16 +7,20 @@
     <table border="1">
         <thead>
             <tr>
-                <th>Date/Hour</th>
+                <th>Date/Time</th>
                 <th tal:repeat="header column_headers" tal:content="header">Header</th>
             </tr>
         </thead>
         <tbody>
             <tr tal:repeat="row array_2d">
-                <td tal:content="repeat.row.index">Hour</td>
+                <td tal:condition="repeat.row.index == 24" tal:content="'TOTALS'">Totals</td>
+                <td tal:condition="repeat.row.index == 25" tal:content="'PERCENT'">Percent</td>
+                <td tal:condition="repeat.row.index < 24" tal:content="string:${reporting_date} Hour ${repeat.row.index}">Hour</td>
                 <td tal:repeat="cell row" tal:content="cell">Cell</td>
             </tr>
         </tbody>
     </table>
+    <br />
+    <footer>${version}</footer>
 </body>
 </html>
