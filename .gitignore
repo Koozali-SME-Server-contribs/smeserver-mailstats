@@ -4,5 +4,7 @@
 *.tgz
 current.*
 *.xz
-current
+current1
+current2
 *.html
+*.txt

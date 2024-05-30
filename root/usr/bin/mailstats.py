@@ -16,8 +16,13 @@ from chameleon import PageTemplateFile,PageTemplate
 import pkg_resources
 import re
 import ipaddress
+import subprocess
+import os
 
 Mailstats_version = '1.2'
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+data_file_path = script_dir+'/../../../'
 
 # Column numbering
 Hour = 0
@@ -177,8 +182,51 @@ def search_2d_list(target, data):
         if target in row:
             return row_idx
     return -1  # Return -1 if not found
-
     
+def check_html2text_installed():
+    try:
+        # Check if html2text is installed by running 'which html2text'
+        result = subprocess.run(
+            ['which', 'html2text'],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+
+        # If the command finds html2text, it will output the path
+        html2text_path = result.stdout.decode('utf-8').strip()
+        
+        if not html2text_path:
+            raise FileNotFoundError
+        
+        print(f"html2text is installed at: {html2text_path}")
+        return True
+
+    except subprocess.CalledProcessError:
+        print("html2text is not installed. Please install it using your package manager.", file=sys.stderr)
+        return False    
+
+def html_to_text(input_file, output_file):
+	if not check_html2text_installed():
+		sys.exit(1)
+	try:
+		# Run the html2text command with -b0 --pad-tables parameters
+		result = subprocess.run(
+			['html2text', '-b0', '--pad-tables', input_file],
+			check=True,  # Raise a CalledProcessError on non-zero exit
+			stdout=subprocess.PIPE,  # Capture stdout
+			stderr=subprocess.PIPE   # Capture stderr
+		)
+
+		# Write the stdout from the command to the output file
+		with open(output_file, 'w', encoding='utf-8') as outfile:
+			outfile.write(result.stdout.decode('utf-8'))
+
+		print(f"Converted {input_file} to {output_file}")
+	except subprocess.CalledProcessError as e:
+		print(f"Error occurred: {e.stderr.decode('utf-8')}", file=sys.stderr)
+		sys.exit(e.returncode)
+
 if __name__ == "__main__":
 	try:
 		chameleon_version = pkg_resources.get_distribution("Chameleon").version
@@ -211,7 +259,7 @@ if __name__ == "__main__":
 	print(version_string)
 
 	num_hours = 25  # Represents hours from 0 to 23 - adds extra one for column totals and another for percentages
-	sorted_log_dict = read_and_filter_yesterday_log('/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/current.log')
+	sorted_log_dict = read_and_filter_yesterday_log(data_file_path+'current.log')
 	columnHeaders = ['Count','WebMail','Local','MailMan','Relay','DMARC','Virus','RBL/DNS','Geoip.','Non.Conf.','Karma','Rej.Load','Del.Spam','Qued.Spam?','  Ham','TOTALS','PERCENT']
 	# dict for each colum identifying plugin that increments count
 	columnPlugin = [''] * 17
@@ -354,7 +402,7 @@ if __name__ == "__main__":
 	#Now apply the results to the chameleon template
 
 	# Path to the template file
-	template_path = '/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/mailstats.html.pt'
+	template_path = data_file_path+'mailstats.html.pt'
 
 	# Load the template
 	with open(template_path, 'r') as template_file:
@@ -367,11 +415,11 @@ if __name__ == "__main__":
 	rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, reporting_date=formatted_yesterday, title=hello_string, version=version_string)
 
 	# Write the rendered HTML to a file
-	output_path = '/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/mailstats_for_'+formatted_yesterday+'.html'
+	output_path = data_file_path+'mailstats_for_'+formatted_yesterday
 	output_path = output_path.replace(' ','_')
-	with open(output_path, 'w') as output_file:
-		
+	with open(output_path+'.html', 'w') as output_file:
 		output_file.write(rendered_html)
-
-	print(f"Rendered HTML saved to {output_path}")
+	#and create a text version  
+	html_to_text(output_path+'.html',output_path+'.txt')
+	print(f"Rendered HTML saved to {output_path}.html/txt")
     
