@@ -227,6 +227,15 @@ def html_to_text(input_file, output_file):
 		print(f"Error occurred: {e.stderr.decode('utf-8')}", file=sys.stderr)
 		sys.exit(e.returncode)
 
+def get_html2text_version():
+    try:
+        result = subprocess.run(['html2text', '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        # Ensure the result is treated as a string in Python 3.6+
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        print(f"Error occurred while checking html2text version: {e}", file=sys.stderr)
+        return None
+        
 if __name__ == "__main__":
 	try:
 		chameleon_version = pkg_resources.get_distribution("Chameleon").version
@@ -419,7 +428,8 @@ if __name__ == "__main__":
 	output_path = output_path.replace(' ','_')
 	with open(output_path+'.html', 'w') as output_file:
 		output_file.write(rendered_html)
-	#and create a text version  
-	html_to_text(output_path+'.html',output_path+'.txt')
+	#and create a text version if the local version is suffiicent
+	if get_html2text_version() == '2019.9.26':
+		html_to_text(output_path+'.html',output_path+'.txt')
 	print(f"Rendered HTML saved to {output_path}.html/txt")
     
