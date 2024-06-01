@@ -18,6 +18,8 @@ import re
 import ipaddress
 import subprocess
 import os
+from collections import defaultdict
+
 
 Mailstats_version = '1.2'
 
@@ -137,18 +139,18 @@ def parse_data(data):
             'action': fields[1].strip() if len(fields) > 1 else None,
             'logterse': fields[2].strip() if len(fields) > 2 else None,
             'ip': fields[3].strip() if len(fields) > 3 else None,
-            'sendurl': fields[4].strip() if len(fields) > 4 else None,
-            'sendurl1': fields[5].strip() if len(fields) > 5 else None,
-            'from-email': fields[6].strip() if len(fields) > 6 else None,
-            'error-reason': fields[6].strip() if len(fields) > 6 else None,
-            'to-email': fields[7].strip() if len(fields) > 7 else None,
-            'error-plugin': fields[8].strip() if len(fields) > 8 else None,
-            'action1': fields[8].strip() if len(fields) > 8 else None,
-            'error-number' : fields[9].strip() if len(fields) > 9 else None,
-            'sender': fields[10].strip() if len(fields) > 10 else None,
-            'error-msg' :fields[10].strip() if len(fields) > 10 else None,
-            'spam-status': fields[11].strip() if len(fields) > 11 else None,
-            'error-result': fields[11].strip() if len(fields) > 11 else None,
+            'sendurl': fields[4].strip() if len(fields) > 4 else None,     #1
+            'sendurl1': fields[5].strip() if len(fields) > 5 else None,    #2
+            'from-email': fields[6].strip() if len(fields) > 6 else None,  #3
+            'error-reason': fields[6].strip() if len(fields) > 6 else None, #3
+            'to-email': fields[7].strip() if len(fields) > 7 else None,		#4
+            'error-plugin': fields[8].strip() if len(fields) > 8 else None,  #5
+            'action1': fields[8].strip() if len(fields) > 8 else None,       #5
+            'error-number' : fields[9].strip() if len(fields) > 9 else None, #6
+            'sender': fields[10].strip() if len(fields) > 10 else None,      #7
+            'error-msg' :fields[10].strip() if len(fields) > 10 else None,   #7
+            'spam-status': fields[11].strip() if len(fields) > 11 else None, #8 
+            'error-result': fields[11].strip() if len(fields) > 11 else None,#8
             # Add more fields as necessary
         }
     except:
@@ -235,7 +237,49 @@ def get_html2text_version():
     except subprocess.CalledProcessError as e:
         print(f"Error occurred while checking html2text version: {e}", file=sys.stderr)
         return None
-        
+ 
+def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, length=50, fill='█', print_end="\r"):
+    """
+    Call in a loop to create a terminal progress bar
+    @params:
+        iteration   - Required : current iteration (Int)
+        total       - Required : total iterations (Int)
+        prefix      - Optional : prefix string (Str)
+        suffix      - Optional : suffix string (Str)
+        decimals    - Optional : positive number of decimals in percent complete (Int)
+        length      - Optional : character length of bar (Int)
+        fill        - Optional : bar fill character (Str)
+        print_end   - Optional : end character (e.g. "\r", "\r\n") (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filled_length = int(length * iteration // total)
+    bar = fill * filled_length + '-' * (length - filled_length)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=print_end)
+    # Print New Line on Complete
+    if iteration == total:
+        print()
+ 
+def insert_string_after(original:str, to_insert:str, after:str) -> str:
+    """
+    Insert to_insert into original after the first occurrence of after.
+    
+    :param original: The original string.
+    :param to_insert: The string to be inserted.
+    :param after: The set of characters after which the string will be inserted.
+    :return: The new string with to_insert inserted after after.
+    """
+    position = original.find(after)
+    print(position)
+    
+    if position == -1:
+        # 'after' string is not found in 'original'
+        return original
+    print(f"{len(after)}")
+    # Position of the insertion point
+    insert_pos = position + len(after)
+    
+    return original[:insert_pos] + to_insert + original[insert_pos:]
+      
 if __name__ == "__main__":
 	try:
 		chameleon_version = pkg_resources.get_distribution("Chameleon").version
@@ -268,7 +312,8 @@ if __name__ == "__main__":
 	print(version_string)
 
 	num_hours = 25  # Represents hours from 0 to 23 - adds extra one for column totals and another for percentages
-	sorted_log_dict = read_and_filter_yesterday_log(data_file_path+'current.log')
+	data_file = data_file_path+'current.log'
+	sorted_log_dict = read_and_filter_yesterday_log(data_file)
 	columnHeaders = ['Count','WebMail','Local','MailMan','Relay','DMARC','Virus','RBL/DNS','Geoip.','Non.Conf.','Karma','Rej.Load','Del.Spam','Qued.Spam?','  Ham','TOTALS','PERCENT']
 	# dict for each colum identifying plugin that increments count
 	columnPlugin = [''] * 17
@@ -297,20 +342,19 @@ if __name__ == "__main__":
 	columnHeaders_len = len(columnHeaders)
 	columnCounts_2d = initialize_2d_array(num_hours, columnHeaders_len,formatted_yesterday)
 	
-
-
-	i = 1
+	virus_pattern = re.compile(r"Virus found: (.*)")
+	found_viruses = defaultdict(int)
+	
+	found_qpcodes = defaultdict(int)
+	qpcodes_pattern = re.compile(r".*(\(.*\)).*'")
+	i = 0;
+	sorted_len= len(sorted_log_dict)
+	# Initial call to print the progress bar
+	print_progress_bar(0, sorted_len, prefix='Progress:', suffix='Complete', length=50)
 	for timestamp, data in sorted_log_dict.items():
-
-		if data['action'] == '(deny)':
-			error = data['error-plugin']
-			msg = data['error-msg']
-			print(f"{i}: {timestamp} IP = {data['ip']} Result:{data['action']} {error} {msg}" )
-		else:
-			error = ""
-			msg = ""
 		i += 1
-
+		print_progress_bar(i, sorted_len, prefix='Progress:', suffix='Complete', length=50)
+		#print(f"{i*100/len}%")
 		# Count of in which hour it falls      
 		#hour = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H')
 		# Parse the timestamp string into a datetime object
@@ -338,7 +382,7 @@ if __name__ == "__main__":
 			if match:
 				score = float(match.group(1))
 				required = float(match.group(2))
-				print(f"{data['spam-status']} / {score} {required}")
+				#print(f"{data['spam-status']} / {score} {required}")
 				if score >= SARejectLevel:
 					columnCounts_2d[hour][DelSpam] += 1
 					columnCounts_2d[ColTotals][DelSpam] += 1
@@ -396,38 +440,100 @@ if __name__ == "__main__":
 				columnCounts_2d[hour][WebMail] += 1
 				columnCounts_2d[ColTotals][WebMail] += 1
 			
+		#Now increment the column which the plugin name indicates
 		if data ['action'] == '(deny)' and data['error-plugin']:
-			print(f"Found plugin {data['error-plugin']}")
+			#print(f"Found plugin {data['error-plugin']}")
 			if data['error-plugin']:
 				row = search_2d_list(data['error-plugin'],columnPlugin)
 				if not row == -1:
-					print(f"Found row: {row}")
+					#print(f"Found row: {row}")
 					columnCounts_2d[hour][row] += 1
 					columnCounts_2d[ColTotals][row] += 1
+					# a few ad hoc extra extractons of data
+					if row == Virus:
+						match = virus_pattern.match(data['action1'])
+						if match:
+							found_viruses[match.group(1)] += 1
+						else:
+							found_viruses[data['action1']] += 1
+					elif data['error-plugin'] == 'naughty':
+						match = qpcodes_pattern.match(data['action1'])
+						if match:
+							rejReason = match.group(1)
+							found_qpcodes[data['error-plugin']+"-"+rejReason] += 1
+						else:
+							found_qpcodes['Unknown'] += 1
+					else:
+						found_qpcodes[data['action1']] += 1
 
+	print()
+	# Now scan for the other lines in the log of interest
+	found_countries = defaultdict(int)
+	geoip_pattern = re.compile(r"check_badcountries: GeoIP Country: (.*)")
+	dmarc_pattern = re.compile(r"dmarc: pass")
+	total_countries = 0
+	DMARCOkCount = 0
+	with open(data_file, 'r') as file:
+		i = 0
+		for line in file:
+			i += 1
+			#Pull out Geoip countries for analysis table
+			match = geoip_pattern.match(line)
+			if match:
+				country = match.group(1)
+				found_countries[country] += 1
+				total_countries += 1
+				break
+			#Pull out DMARC approvals
+			match = dmarc_pattern.match(line)
+			if match:
+				DMARCOkCount += 1
+				break
 			
-	#Now increment the column which the plugin name indicates
-			
-	#Now apply the results to the chameleon template
-
+	#Now apply the results to the chameleon template - main table
 	# Path to the template file
 	template_path = data_file_path+'mailstats.html.pt'
-
 	# Load the template
 	with open(template_path, 'r') as template_file:
 		template_content = template_file.read()
-
 	# Create a Chameleon template instance
 	template = PageTemplate(template_content)
-
 	# Render the template with the 2D array data and column headers
 	rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, reporting_date=formatted_yesterday, title=hello_string, version=version_string)
+	total_html = rendered_html
+
+	#Now apply the results to the chameleon template - subservient tables
+	
+	# Path to the template file
+	qpsmtpd_headers = ["Code",'Count'] #,'Percent','Reason']
+	qpsmtpd_title = 'Qpsmtpd codes league table:'
+	#and found_qpcodes
+	# Need to compute the percentages here.
+	template_path = data_file_path+'mailstats-sub-table.html.pt'
+	# Load the template
+	with open(template_path, 'r') as template_file:
+		template_content = template_file.read()
+	# Create a Chameleon template instance
+	try:
+		template = PageTemplate(template_content)
+		# Render the template with the 2D array data and column headers
+		try:
+			rendered_html = template(array_2d=found_qpcodes, column_headers=qpsmtpd_headers, title=qpsmtpd_title)
+		except Exception as e:
+			print(f"An chameleon controller render error occurred: {e}")
+			quit(1)    
+	except Exception as e:
+		print(f"An chameleon controller template error occurred: {e}")
+		quit(1)
+	# Add it to the total 
+	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
+
 
 	# Write the rendered HTML to a file
 	output_path = data_file_path+'mailstats_for_'+formatted_yesterday
 	output_path = output_path.replace(' ','_')
 	with open(output_path+'.html', 'w') as output_file:
-		output_file.write(rendered_html)
+		output_file.write(total_html)
 	#and create a text version if the local version is suffiicent
 	if get_html2text_version() == '2019.9.26':
 		html_to_text(output_path+'.html',output_path+'.txt')

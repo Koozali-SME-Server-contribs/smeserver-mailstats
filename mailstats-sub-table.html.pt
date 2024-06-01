@@ -1,0 +1,16 @@
+<h2>${title}</h2>
+    <h1>${title}</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th tal:repeat="header column_headers">${header}</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr tal:repeat="item array_2d.items()">
+                <td>${item[0]}</td>
+                <td>${item[1]}</td>
+            </tr>
+        </tbody>
+    </table>
+

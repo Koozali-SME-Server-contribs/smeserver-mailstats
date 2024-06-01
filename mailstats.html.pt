@@ -15,11 +15,12 @@
             <tr tal:repeat="row array_2d">
                 <td tal:condition="repeat.row.index == 24" tal:content="'TOTALS'">Totals</td>
                 <td tal:condition="repeat.row.index == 25" tal:content="'PERCENT'">Percent</td>
-                <td tal:condition="repeat.row.index < 24" tal:content="string:${reporting_date} Hour ${repeat.row.index}">Hour</td>
+                <td tal:condition="repeat.row.index < 24" tal:content="string:${reporting_date}, ${repeat.row.index}">Hour</td>
                 <td tal:repeat="cell row" tal:content="cell">Cell</td>
             </tr>
         </tbody>
     </table>
+    <!---Add in sub tables here -->
     <br />
     <footer>${version}</footer>
 </body>
