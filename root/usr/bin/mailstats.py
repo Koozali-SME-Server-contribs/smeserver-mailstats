@@ -9,6 +9,10 @@
 #
 # Todo
 # 1. Make "yesterday" parameterised
+# 2. Get data from SMEServer DB records
+# 3. Other stats
+# 4. Percentages for main table
+# 5. Percentages and sort for Sub tables
 #
 from datetime import datetime, timedelta
 import sys
@@ -353,6 +357,26 @@ def split_timestamp_and_data(log_entry: str) -> list:
 	#print(f"{timestamp} {rest_of_data}")
 	
 	return [timestamp, rest_of_data]
+	
+def render_sub_table(table_title,table_headers,found_values):
+	# NeedNOTE: also need to compute the percentages here.
+	template_path = data_file_path+'mailstats-sub-table.html.pt'
+	# Load the template
+	with open(template_path, 'r') as template_file:
+		template_content = template_file.read()
+	# Create a Chameleon template instance
+	try:
+		template = PageTemplate(template_content)
+		# Render the template with the 2D array data and column headers
+		try:
+			rendered_html = template(array_2d=found_values, column_headers=table_headers, title=table_title)
+		except Exception as e:
+			print(f"{table_title}: A chameleon controller render error occurred: {e}")
+			raise ValueError
+	except Exception as e:
+		print(f"{table_title}: A chameleon controller template error occurred: {e}")
+		raise ValueError
+	return rendered_html
 	  
 if __name__ == "__main__":
 	try:
@@ -557,8 +581,8 @@ if __name__ == "__main__":
 	
 	# Now scan for the other lines in the log of interest
 	found_countries = defaultdict(int)
-	geoip_pattern = re.compile(r"check_badcountries: GeoIP Country: (.*)")
-	dmarc_pattern = re.compile(r"dmarc: pass")
+	geoip_pattern = re.compile(r".*check_badcountries: GeoIP Country: (.*)")
+	dmarc_pattern = re.compile(r".*dmarc: pass")
 	total_countries = 0
 	DMARCOkCount = 0
 	# Pick up all log_entries = read_yesterday_log_file(data_file)
@@ -571,18 +595,17 @@ if __name__ == "__main__":
 		i += 1
 		print_progress_bar(i, sorted_len, prefix='Scanning for sub tables:', suffix='Complete', length=50)
 		#Pull out Geoip countries for analysis table
-		
 		match = geoip_pattern.match(data)
 		if match:
 			country = match.group(1)
 			found_countries[country] += 1
 			total_countries += 1
-			break
+			continue
 		#Pull out DMARC approvals
 		match = dmarc_pattern.match(data)
 		if match:
 			DMARCOkCount += 1
-			break
+			continue
 			
 	#Now apply the results to the chameleon template - main table
 	# Path to the template file
@@ -597,31 +620,19 @@ if __name__ == "__main__":
 	total_html = rendered_html
 
 	#Now apply the results to the chameleon template - subservient tables
-	
-	# Path to the template file
-	qpsmtpd_headers = ["Code",'Count'] #,'Percent','Reason']
+	#qpsmtd codes
+	qpsmtpd_headers = ["Code",'Count','Percent','Reason']
 	qpsmtpd_title = 'Qpsmtpd codes league table:'
-	#and found_qpcodes
-	# Need to compute the percentages here.
-	template_path = data_file_path+'mailstats-sub-table.html.pt'
-	# Load the template
-	with open(template_path, 'r') as template_file:
-		template_content = template_file.read()
-	# Create a Chameleon template instance
-	try:
-		template = PageTemplate(template_content)
-		# Render the template with the 2D array data and column headers
-		try:
-			rendered_html = template(array_2d=found_qpcodes, column_headers=qpsmtpd_headers, title=qpsmtpd_title)
-		except Exception as e:
-			print(f"An chameleon controller render error occurred: {e}")
-			quit(1)    
-	except Exception as e:
-		print(f"An chameleon controller template error occurred: {e}")
-		quit(1)
+	rendered_html = render_sub_table(qpsmtpd_title,qpsmtpd_headers,found_qpcodes)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
-
+	
+	#Geoip Country codes
+	geoip_headers  = ['Country','Count','Percent','Rejected?']
+	geoip_title = 'Geoip results:'
+	rendered_html = render_sub_table(geoip_title,geoip_headers,found_countries)
+	# Add it to the total 
+	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
 
 	# Write the rendered HTML to a file
 	output_path = data_file_path+'mailstats_for_'+formatted_yesterday
