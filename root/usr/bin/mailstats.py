@@ -586,27 +586,31 @@ if __name__ == "__main__":
 	total_countries = 0
 	DMARCOkCount = 0
 	# Pick up all log_entries = read_yesterday_log_file(data_file)
-	sorted_log_dict = sort_log_entries(log_entries)
+	#sorted_log_dict = sort_log_entries(log_entries)
 
 	i = 0
-	sorted_len = len(sorted_log_dict)
-	print_progress_bar(0, sorted_len, prefix='Progress:', suffix='Complete', length=50)
-	for timestamp, data in sorted_log_dict.items():
+	j = 0
+	log_len = len(log_entries)
+	print_progress_bar(0, log_len, prefix='Progress:', suffix='Complete', length=50)
+	for data in log_entries:
 		i += 1
-		print_progress_bar(i, sorted_len, prefix='Scanning for sub tables:', suffix='Complete', length=50)
+		print_progress_bar(i, log_len, prefix='Scanning for sub tables:', suffix='Complete', length=50)
 		#Pull out Geoip countries for analysis table
-		match = geoip_pattern.match(data)
+		if "check_badcountries: GeoIP Country" in data:
+			j += 1
+		match = geoip_pattern.match(data[1])
 		if match:
 			country = match.group(1)
 			found_countries[country] += 1
 			total_countries += 1
 			continue
 		#Pull out DMARC approvals
-		match = dmarc_pattern.match(data)
+		match = dmarc_pattern.match(data[1])
 		if match:
 			DMARCOkCount += 1
 			continue
 			
+	print(f"J:{j} I:{i}")
 	#Now apply the results to the chameleon template - main table
 	# Path to the template file
 	template_path = data_file_path+'mailstats.html.pt'
