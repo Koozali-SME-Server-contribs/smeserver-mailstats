@@ -614,7 +614,7 @@ if __name__ == "__main__":
 			DMARCOkCount += 1
 			continue
 			
-	print(f"J:{j} I:{i}")
+	#print(f"J:{j} I:{i}")
 	#Now apply the results to the chameleon template - main table
 	# Path to the template file
 	template_path = template_dir+'mailstats.html.pt'

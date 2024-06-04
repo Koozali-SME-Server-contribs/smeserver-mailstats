@@ -1,0 +1,9 @@
+    # Alias for mailstats
+    Alias "/mailstats" "/opt/mailstats/html"
+
+    <Directory "/opt/mailstats/html">
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+
