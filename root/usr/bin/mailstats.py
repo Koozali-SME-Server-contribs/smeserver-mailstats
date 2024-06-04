@@ -28,10 +28,14 @@ from collections import defaultdict
 Mailstats_version = '1.2'
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-data_file_path = script_dir+'/../../../'
+data_file_path = script_dir+'/../..'    #back to the top
 now = datetime.now()
 yesterday = now - timedelta(days=1)
 formatted_yesterday = yesterday.strftime("%Y-%m-%d")
+#html_page_path = data_file_path+"/home/e-smith/files/ibays/mesdb/html/mailstats/"
+html_page_dir = data_file_path+"/opt/mailstats/html/"
+template_dir = data_file_path+"/opt/mailstats/templates/"
+logs_dir = data_file_path+"/opt/mailstats/logs/"
 
 # Column numbering
 Hour = 0
@@ -360,7 +364,7 @@ def split_timestamp_and_data(log_entry: str) -> list:
 	
 def render_sub_table(table_title,table_headers,found_values):
 	# NeedNOTE: also need to compute the percentages here.
-	template_path = data_file_path+'mailstats-sub-table.html.pt'
+	template_path = template_dir+'mailstats-sub-table.html.pt'
 	# Load the template
 	with open(template_path, 'r') as template_file:
 		template_content = template_file.read()
@@ -409,8 +413,8 @@ if __name__ == "__main__":
 
 	num_hours = 25  # Represents hours from 0 to 23 - adds extra one for column totals and another for percentages
 
-	data_file = data_file_path+'current.log'
-	log_entries,skip_count = read_in_yesterday_log_file(data_file)
+	log_file = logs_dir+'current.log'
+	log_entries,skip_count = read_in_yesterday_log_file(log_file)
 	if len(log_entries) == 0:
 		print(f"No records found in {data_file}")
 		quit()
@@ -613,7 +617,7 @@ if __name__ == "__main__":
 	print(f"J:{j} I:{i}")
 	#Now apply the results to the chameleon template - main table
 	# Path to the template file
-	template_path = data_file_path+'mailstats.html.pt'
+	template_path = template_dir+'mailstats.html.pt'
 	# Load the template
 	with open(template_path, 'r') as template_file:
 		template_content = template_file.read()
@@ -660,7 +664,7 @@ if __name__ == "__main__":
 	total_html = insert_string_after(total_html,Nav_str, "<!---Navigation here-->")
 
 	# Write the rendered HTML to a file
-	output_path = data_file_path+'mailstats_for_'+formatted_yesterday
+	output_path = html_page_dir+'mailstats_for_'+formatted_yesterday
 	output_path = output_path.replace(' ','_')
 	with open(output_path+'.html', 'w') as output_file:
 		output_file.write(total_html)
