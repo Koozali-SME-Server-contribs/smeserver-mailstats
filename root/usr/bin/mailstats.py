@@ -36,6 +36,9 @@ formatted_yesterday = yesterday.strftime("%Y-%m-%d")
 html_page_dir = data_file_path+"/opt/mailstats/html/"
 template_dir = data_file_path+"/opt/mailstats/templates/"
 logs_dir = data_file_path+"/opt/mailstats/logs/"
+#E-Smith Config DBs
+#db_dir = "/home/e-smith/db"
+db_dir = "/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/"
 
 # Column numbering
 Hour = 0
@@ -56,6 +59,72 @@ Ham = 14
 TOTALS = 15
 PERCENT = 16
 ColTotals = 24
+
+
+
+# Routines to access the E-Smith dbs
+def parse_entity_line(line):
+	"""
+	Parses a single line of key-value pairs.
+
+	:param line: Single line string to be parsed
+	:return: Dictionary with keys and values
+	"""
+	parts = line.split('|')
+	# First part contains the entity name and type in the format 'entity_name=type'
+	entity_part = parts.pop(0)
+	entity_name, entity_type = entity_part.split('=')
+	
+	entity_dict = {'type': entity_type}
+	
+	for i in range(0, len(parts)-1, 2):
+		key = parts[i]
+		value = parts[i+1]
+		entity_dict[key] = value
+	
+	return entity_name, entity_dict
+
+def parse_config(config_string):
+    """
+    Parses a multi-line configuration string where each line is an entity with key-value pairs.
+
+    :param config_string: Multi-line string to be parsed
+    :return: Dictionary of dictionaries with entity names as keys
+    """
+    config_dict = {}
+
+    lines = config_string.strip().split('\n')
+    for line in lines:
+        line = line.strip()
+        if line.startswith('#'):  # Skip lines that start with '#'
+            continue
+        entity_name, entity_dict = parse_entity_line(line)
+        config_dict[entity_name] = entity_dict
+
+    return config_dict
+	
+def read_config_file(file_path):
+	"""
+	Reads a configuration file and parses its contents.
+
+	:param file_path: Path to the configuration file
+	:return: Parsed configuration dictionary
+	"""
+	with open(file_path, 'r') as file:
+		config_string = file.read()
+	return parse_config(config_string)
+
+def get_value(config_dict, entity, key):
+	"""
+	Retrieves the value corresponding to the given key from a specific entity.
+
+	:param config_dict: Dictionary of dictionaries with parsed config
+	:param entity: Entity from which to retrieve the key's value
+	:param key: Key whose value needs to be retrieved
+	:return: Value corresponding to the key, or None if the entity or key does not exist
+	"""
+	return config_dict.get(entity, {}).get(key)
+
 
 def is_private_ip(ip):
 	try:
@@ -393,11 +462,12 @@ if __name__ == "__main__":
 	formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M")
 
 	#From SMEServer DB
-	DomainName = 'bjsystems.co.uk' #  $cdb->get('DomainName')->value;
-	RHSenabled = True  #( $cdb->get('qpsmtpd')->prop('RHSBL') eq 'enabled' );
-	DNSenabled = True  #( $cdb->get('qpsmtpd')->prop('DNSBL') eq 'enabled' );
-	SARejectLevel = 12  #$cdb->get('spamassassin')->prop('RejectLevel');
-	SATagLevel = 4  #$cdb->get('spamassassin')->prop('TagLevel');
+	ConfigDB = read_config_file(db_dir+"configuration")
+	DomainName = get_value(ConfigDB, "DomainName", "type") #'bjsystems.co.uk' #  $cdb->get('DomainName')->value;
+	RHSenabled = get_value(ConfigDB, "qpsmtpd", "RHSBL") == "enabled"    #True  #( $cdb->get('qpsmtpd')->prop('RHSBL') eq 'enabled' );
+	DNSenabled = get_value(ConfigDB, "qpsmtpd", "DNSBL") == "enabled"  #True  #( $cdb->get('qpsmtpd')->prop('DNSBL') eq 'enabled' );
+	SARejectLevel = int(get_value(ConfigDB, "spamassassin", "RejectLevel")) #12  #$cdb->get('spamassassin')->prop('RejectLevel');
+	SATagLevel = int(get_value(ConfigDB, "spamassassin", "TagLevel")) #4  #$cdb->get('spamassassin')->prop('TagLevel');
 	
 	FetchmailIP = '127.0.0.200';       #Apparent Ip address of fetchmail deliveries
 	WebmailIP = '127.0.0.1';           #Apparent Ip of Webmail sender
