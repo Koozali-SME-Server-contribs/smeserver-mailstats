@@ -637,13 +637,34 @@ if __name__ == "__main__":
 	rendered_html = render_sub_table(geoip_title,geoip_headers,found_countries)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
+	
+	#Add in navigation html - next/previous/see in browser
+	day_format = "%Y-%m-%d"
+	# Convert the time string to a datetime object
+	date_obj = datetime.strptime(formatted_yesterday, day_format)
+	# Compute the next date by adding one day
+	next_date = date_obj + timedelta(days=1)
+	# Compute the previous date by subtracting one day
+	previous_date = date_obj - timedelta(days=1)
+	# Convert the datetime objects back to strings in the desired format
+	next_date_str = next_date.strftime(day_format)
+	previous_date_str = previous_date.strftime(day_format)
+	navigation_str_html = "<div class='linksattop'>\
+<a class='prevlink' href='http://${DomainName}/mailstats/mailstats_for_${PreviousDate}.html'>Previous</a>\
+<div class='divseeinbrowser'><a class='seeinbrowser' href='http://${DomainName}/mailstats/mailstats-${TodayDate}.html'>See in browser</a></div>\
+<a class='nextlink' href='http://${DomainName}/mailstats/mailstats_for_${NextDate}.html'>Next</a>\
+</div>"
+	template = PageTemplate(navigation_str_html)
+	Nav_str = template(PreviousDate=previous_date_str,NextDate=next_date_str,TodayDate=formatted_yesterday,DomainName=DomainName)
+	# And insert it
+	total_html = insert_string_after(total_html,Nav_str, "<!---Navigation here-->")
 
 	# Write the rendered HTML to a file
 	output_path = data_file_path+'mailstats_for_'+formatted_yesterday
 	output_path = output_path.replace(' ','_')
 	with open(output_path+'.html', 'w') as output_file:
 		output_file.write(total_html)
-	#and create a text version if the local version is suffiicent
+	#and create a text version if the local version of html2text is suffiicent
 	if get_html2text_version() == '2019.9.26':
 		html_to_text(output_path+'.html',output_path+'.txt')
 	print(f"Rendered HTML saved to {output_path}.html/txt")
