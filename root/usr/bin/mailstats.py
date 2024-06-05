@@ -117,16 +117,17 @@ def read_config_file(file_path):
 		config_string = file.read()
 	return parse_config(config_string)
 
-def get_value(config_dict, entity, key):
-	"""
-	Retrieves the value corresponding to the given key from a specific entity.
+def get_value(config_dict, entity, key, default=None):
+    """
+    Retrieves the value corresponding to the given key from a specific entity.
 
-	:param config_dict: Dictionary of dictionaries with parsed config
-	:param entity: Entity from which to retrieve the key's value
-	:param key: Key whose value needs to be retrieved
-	:return: Value corresponding to the key, or None if the entity or key does not exist
-	"""
-	return config_dict.get(entity, {}).get(key)
+    :param config_dict: Dictionary of dictionaries with parsed config
+    :param entity: Entity from which to retrieve the key's value
+    :param key: Key whose value needs to be retrieved
+    :param default: Default value to return if the entity or key does not exist
+    :return: Value corresponding to the key, or the default value if the entity or key does not exist
+    """
+    return config_dict.get(entity, {}).get(key, default)
 
 
 def is_private_ip(ip):
@@ -512,14 +513,31 @@ def read_html_from_file(filepath):
 	with open(filepath, 'r', encoding='utf-8') as file:
 		html_contents = file.read()
 	# Get Filepath
-	css_path = os.path.dirname(filepath)+"mailstats.css"
+	css_path = os.path.dirname(filepath)+"/mailstats.css"
 	# Read in CSS 
 	with open(css_path, 'r', encoding='utf-8') as file:
 		css_contents = file.read()
-	html_contents = insert_string_after(html_contents,css_contents+"</head>","</head>")
+	html_contents = insert_string_after(html_contents,css_contents,"<!--css here-->")
 	return html_contents
+	
+def read_text_from_file(filepath):
+	"""
+	Reads plain text content from a given file.
 
-def send_email(html_content, subject, from_email, to_email, smtp_server, smtp_port, smtp_user=None, smtp_password=None):
+	Args:
+		filepath (str): Path to the text file.
+	
+	Returns:
+		str: Text content of the file.
+	"""
+	try:
+		with open(filepath, 'r', encoding='utf-8') as file:
+			return file.read()
+	except:
+		print(f"{filepath} not found")
+		return
+
+def send_email(subject, from_email, to_email, smtp_server, smtp_port, HTML_content=None, Text_content=None, smtp_user=None, smtp_password=None):
 	"""
 	Sends an HTML email.
 
@@ -535,12 +553,13 @@ def send_email(html_content, subject, from_email, to_email, smtp_server, smtp_po
 	"""
 	#Example (which works!)
 			# send_email(
-			# html_content=html_content, 
 			# subject="Your subject",
 			# from_email="mailstats@bjsystems.co.uk", 
 			# to_email="brianr@bjsystems.co.uk", 
 			# smtp_server="mail.bjsystems.co.uk", 
 			# smtp_port=25
+			# HTML_content=html_content, 
+			# Text_content=Text_content, 
 		# )
 
 	# Set up the email
@@ -549,9 +568,12 @@ def send_email(html_content, subject, from_email, to_email, smtp_server, smtp_po
 	msg['From'] = from_email
 	msg['To'] = to_email
 	
-	# Attach the HTML content
-	part = MIMEText(html_content, 'html')
-	msg.attach(part)
+	if HTML_content:
+		part = MIMEText(HTML_content, 'html')
+		msg.attach(part)
+	if Text_content:
+		part = MIMEText(Text_content, 'plain')
+		msg.attach(part)
 
 	# Sending the email
 	with smtplib.SMTP(smtp_server, smtp_port) as server:
@@ -572,22 +594,32 @@ if __name__ == "__main__":
 
 	#From SMEServer DB
 	ConfigDB = read_config_file(db_dir+"configuration")
-	DomainName = get_value(ConfigDB, "DomainName", "type") #'bjsystems.co.uk' #  $cdb->get('DomainName')->value;
-	RHSenabled = get_value(ConfigDB, "qpsmtpd", "RHSBL") == "enabled"    #True  #( $cdb->get('qpsmtpd')->prop('RHSBL') eq 'enabled' );
-	DNSenabled = get_value(ConfigDB, "qpsmtpd", "DNSBL") == "enabled"  #True  #( $cdb->get('qpsmtpd')->prop('DNSBL') eq 'enabled' );
-	SARejectLevel = int(get_value(ConfigDB, "spamassassin", "RejectLevel")) #12  #$cdb->get('spamassassin')->prop('RejectLevel');
-	SATagLevel = int(get_value(ConfigDB, "spamassassin", "TagLevel")) #4  #$cdb->get('spamassassin')->prop('TagLevel');
+
+	DomainName = get_value(ConfigDB, "DomainName", "type") 							#'bjsystems.co.uk' #  $cdb->get('DomainName')->value;
+
+	RHSenabled = get_value(ConfigDB, "qpsmtpd", "RHSBL","disabled") == "enabled"    #True  #( $cdb->get('qpsmtpd')->prop('RHSBL') eq 'enabled' );
+	DNSenabled = get_value(ConfigDB, "qpsmtpd", "DNSBL","disabled") == "enabled"  	#True  #( $cdb->get('qpsmtpd')->prop('DNSBL') eq 'enabled' );
+
+	SARejectLevel = int(get_value(ConfigDB, "spamassassin", "RejectLevel","12")) 	#12  #$cdb->get('spamassassin')->prop('RejectLevel');
+	SATagLevel = int(get_value(ConfigDB, "spamassassin", "TagLevel","4")) 			#4  #$cdb->get('spamassassin')->prop('TagLevel');
+
+	EmailAddress = get_value(ConfigDB,"mailstats","Email","Admin")
+	EmailTextOrHTML = get_value(ConfigDB,"mailstats","EmailTextOrHTML","Text") 		#Text or Both or None
+	EmailHost = get_value(ConfigDB,"mailstats","EmailHost","mail.bjsystems.co.uk") 	#Default will be localhost
+	EmailPort = int(get_value(ConfigDB,"mailstats","EmailPort","25"))
+	EMailSMTPUser = get_value(ConfigDB,"mailstats","EmailUser")   					#None = default => no authenticatioon needed
+	EMailSMTPPassword = get_value(ConfigDB,"mailstats","EmailPassword")
 	
 	spamassassin_version = get_spamassassin_version()
 	clamav_version = get_clamav_version()
 	
-	FetchmailIP = '127.0.0.200';       #Apparent Ip address of fetchmail deliveries
-	WebmailIP = '127.0.0.1';           #Apparent Ip of Webmail sender
-	localhost = 'localhost';           #Apparent sender for webmail
-	FETCHMAIL = 'FETCHMAIL';    #Sender from fetchmail when Ip address not 127.0.0.200 - when qpsmtpd denies the email
-	MAILMAN = "bounces";        #sender when mailman sending when orig is localhost
+	FetchmailIP = '127.0.0.200';       	#Apparent Ip address of fetchmail deliveries
+	WebmailIP = '127.0.0.1';           	#Apparent Ip of Webmail sender
+	localhost = 'localhost';           	#Apparent sender for webmail
+	FETCHMAIL = 'FETCHMAIL';   			#Sender from fetchmail when Ip address not 127.0.0.200 - when qpsmtpd denies the email
+	MAILMAN = "bounces";        		#sender when mailman sending when orig is localhost
 	DMARCDomain="dmarc"; 				#Pattern to recognised DMARC sent emails (this not very reliable, as the email address could be anything)
-	DMARCOkPattern="dmarc: pass";  #Pattern to use to detect DMARC approval
+	DMARCOkPattern="dmarc: pass";  		#Pattern to use to detect DMARC approval
 	hello_string = "Mailstats:"+Mailstats_version+' for '+DomainName+" at "+formatted_datetime+" for "+formatted_yesterday
 	print(hello_string)
 	version_string = "Chameleon:"+chameleon_version+" Python:"+python_version
@@ -873,6 +905,48 @@ if __name__ == "__main__":
 	if get_html2text_version() == '2019.9.26':
 		html_to_text(output_path+'.html',output_path+'.txt')
 	print(f"Rendered HTML saved to {output_path}.html/txt")
+	
+	html_content = None
+	text_content = None
+	#Now see if Email required
+	if EmailTextOrHTML:
+		if EmailTextOrHTML == "HTML" or EmailTextOrHTML == "Both":
+			# Send html email (default))
+			filepath = html_page_dir+"mailstats_for_"+formatted_yesterday+".html"
+			html_content = read_html_from_file(filepath)
+		if EmailTextOrHTML == "Text" or EmailTextOrHTML == "Both":
+			filepath = html_page_dir+"mailstats_for_"+formatted_yesterday+".txt"
+			text_content = read_text_from_file(filepath)
+		if EMailSMTPUser:
+			# Send authenticated
+			print("Sending authenticated")
+			send_email(
+				html_content=email_content, 
+				subject="Mailstats for "+formatted_yesterday,
+				from_email="mailstats@"+DomainName, 
+				to_email=EmailAddress, 
+				smtp_server=EmailHost, 
+				smtp_port=EmailPort,
+				HTML_content=html_content, 
+				Text_content=text_content,
+				smtp_user=EMailSMTPUser,
+				smtp_password=EMailSMTPPassword
+			)
+		else:
+			# No authentication
+			print("Sending non authenticated")
+			try:
+				send_email(
+					subject="Mailstats for "+formatted_yesterday,
+					from_email="mailstats@"+DomainName, 
+					to_email=EmailAddress, 
+					smtp_server=EmailHost, 
+					smtp_port=EmailPort,
+					HTML_content=html_content, 
+					Text_content=text_content 
+				)
+			except exception as e:
+				Print(f"Email EXcpetion {e}")
 	
 
 
