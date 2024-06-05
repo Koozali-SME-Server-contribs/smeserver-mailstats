@@ -23,7 +23,9 @@ import ipaddress
 import subprocess
 import os
 from collections import defaultdict
-
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 Mailstats_version = '1.2'
 
@@ -59,6 +61,7 @@ Ham = 14
 TOTALS = 15
 PERCENT = 16
 ColTotals = 24
+ColPercent = 25
 
 
 
@@ -433,24 +436,130 @@ def split_timestamp_and_data(log_entry: str) -> list:
 	
 def render_sub_table(table_title,table_headers,found_values):
 	# NeedNOTE: also need to compute the percentages here.
-	template_path = template_dir+'mailstats-sub-table.html.pt'
+	# and sort it.
+	# Get the total
+	total_sum = sum(found_values.values())
+	# and add in list with second element the percentage
+	# Create a list of tuples with each tuple containing (key, value, percentage)
+	sub_result = [(key, value, (round(round(value / total_sum,4) * 100,2))) for key, value in found_values.items()]
+	sub_result.sort(key=lambda x: x[2], reverse=True)  # Sort by percentage in descending order
+
+		
+	sub_template_path = template_dir+'mailstats-sub-table.html.pt'
 	# Load the template
-	with open(template_path, 'r') as template_file:
+	with open(sub_template_path, 'r') as template_file:
 		template_content = template_file.read()
 	# Create a Chameleon template instance
 	try:
 		template = PageTemplate(template_content)
 		# Render the template with the 2D array data and column headers
 		try:
-			rendered_html = template(array_2d=found_values, column_headers=table_headers, title=table_title)
+			rendered_html = template(array_2d=sub_result, column_headers=table_headers, title=table_title)
 		except Exception as e:
-			print(f"{table_title}: A chameleon controller render error occurred: {e}")
-			raise ValueError
+			raise ValueError(f"{table_title}: A chameleon controller render error occurred: {e}")
 	except Exception as e:
-		print(f"{table_title}: A chameleon controller template error occurred: {e}")
-		raise ValueError
+		raise ValueError(f"{table_title}: A chameleon controller template error occurred: {e}")
 	return rendered_html
-	  
+	
+	
+def get_spamassassin_version():
+    """
+    Get the installed SpamAssassin version.
+
+    Returns:
+        str: Version number of SpamAssassin if installed, otherwise an error message.
+    """
+    try:
+        result = subprocess.run(['spamassassin', '--version'], capture_output=True, text=True)
+        if result.returncode == 0:
+            version_line = result.stdout.split('\n')[0]
+            version = version_line.split()[1]
+            return version
+        else:
+            return "SpamAssassin is not installed or an error occurred."
+    except Exception as e:
+        return f"Error: {e}"
+
+def get_clamav_version():
+    """
+    Get the installed ClamAV version.
+
+    Returns:
+        str: Version number of ClamAV if installed, otherwise an error message.
+    """
+    try:
+        result = subprocess.run(['clamscan', '--version'], capture_output=True, text=True)
+        if result.returncode == 0:
+            version_line = result.stdout.split('\n')[0]
+            version = version_line.split()[1]
+            return version
+        else:
+            return "ClamAV is not installed or an error occurred."
+    except Exception as e:
+        return f"Error: {e}"
+        
+def read_html_from_file(filepath):
+	"""
+	Reads HTML content from a given file.
+
+	Args:
+		filepath (str): Path to the HTML file.
+	
+	Returns:
+		str: HTML content of the file.
+	"""
+	# Need to add in here the contents of the css file at the end of the head section.
+	with open(filepath, 'r', encoding='utf-8') as file:
+		html_contents = file.read()
+	# Get Filepath
+	css_path = os.path.dirname(filepath)+"mailstats.css"
+	# Read in CSS 
+	with open(css_path, 'r', encoding='utf-8') as file:
+		css_contents = file.read()
+	html_contents = insert_string_after(html_contents,css_contents+"</head>","</head>")
+	return html_contents
+
+def send_email(html_content, subject, from_email, to_email, smtp_server, smtp_port, smtp_user=None, smtp_password=None):
+	"""
+	Sends an HTML email.
+
+	Args:
+		html_content (str): The HTML content to send in the email.
+		subject (str): The subject of the email.
+		from_email (str): The sender's email address.
+		to_email (str): The recipient's email address.
+		smtp_server (str): SMTP server address.
+		smtp_port (int): SMTP server port.
+		smtp_user (str, optional): SMTP server username. Default is None.
+		smtp_password (str, optional): SMTP server password. Default is None.
+	"""
+	#Example (which works!)
+			# send_email(
+			# html_content=html_content, 
+			# subject="Your subject",
+			# from_email="mailstats@bjsystems.co.uk", 
+			# to_email="brianr@bjsystems.co.uk", 
+			# smtp_server="mail.bjsystems.co.uk", 
+			# smtp_port=25
+		# )
+
+	# Set up the email
+	msg = MIMEMultipart('alternative')
+	msg['Subject'] = subject
+	msg['From'] = from_email
+	msg['To'] = to_email
+	
+	# Attach the HTML content
+	part = MIMEText(html_content, 'html')
+	msg.attach(part)
+
+	# Sending the email
+	with smtplib.SMTP(smtp_server, smtp_port) as server:
+		server.starttls()  # Upgrade the connection to secure
+		if smtp_user and smtp_password:
+			server.login(smtp_user, smtp_password)  # Authenticate only if credentials are provided
+		server.sendmail(from_email, to_email, msg.as_string())
+  
 if __name__ == "__main__":
 	try:
 		chameleon_version = pkg_resources.get_distribution("Chameleon").version
@@ -468,6 +577,9 @@ if __name__ == "__main__":
 	DNSenabled = get_value(ConfigDB, "qpsmtpd", "DNSBL") == "enabled"  #True  #( $cdb->get('qpsmtpd')->prop('DNSBL') eq 'enabled' );
 	SARejectLevel = int(get_value(ConfigDB, "spamassassin", "RejectLevel")) #12  #$cdb->get('spamassassin')->prop('RejectLevel');
 	SATagLevel = int(get_value(ConfigDB, "spamassassin", "TagLevel")) #4  #$cdb->get('spamassassin')->prop('TagLevel');
+	
+	spamassassin_version = get_spamassassin_version()
+	clamav_version = get_clamav_version()
 	
 	FetchmailIP = '127.0.0.200';       #Apparent Ip address of fetchmail deliveries
 	WebmailIP = '127.0.0.1';           #Apparent Ip of Webmail sender
@@ -650,8 +762,27 @@ if __name__ == "__main__":
 							found_qpcodes['Unknown'] += 1
 					else:
 						found_qpcodes[parsed_data['action1']] += 1
-
-	print()
+	print() #seperate the [progress bar]
+	# Compute percentages
+	total_Count  = columnCounts_2d[ColTotals][TOTALS]
+	#Column of percentages
+	for row in range(24):
+		if total_Count == 0:
+			percentage_of_total = 0
+		else:
+			percentage_of_total = round(round(columnCounts_2d[row][TOTALS] / total_Count,4) * 100,2)
+		columnCounts_2d[row][PERCENT] = percentage_of_total
+	#Row of percentages
+	for col in range(TOTALS):
+		if total_Count == 0:
+			percentage_of_total = 0
+		else:
+			percentage_of_total = round(round(columnCounts_2d[ColTotals][col] / total_Count,4) * 100,2)
+		columnCounts_2d[ColPercent][col] = percentage_of_total
+	# and drop in the 100% to make it look correct!
+	columnCounts_2d[ColPercent][PERCENT] = 100
+	columnCounts_2d[ColTotals][PERCENT] = 100
+	columnCounts_2d[ColPercent][TOTALS] = 100
 	
 	# Now scan for the other lines in the log of interest
 	found_countries = defaultdict(int)

@@ -8,3 +8,7 @@ current1
 current2
 *.html
 *.txt
+accounts
+configuration
+domains
+hosts
