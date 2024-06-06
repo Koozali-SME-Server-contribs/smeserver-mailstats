@@ -14,6 +14,13 @@
 # 4. Percentages for main table
 # 5. Percentages and sort for Sub tables
 #
+# Centos7:
+# yum install python3-chameleon --enablerepo=epel
+# yum install html2text --enablerepo=epel
+#
+# Rocky8:
+#
+#
 from datetime import datetime, timedelta
 import sys
 from chameleon import PageTemplateFile,PageTemplate
@@ -39,8 +46,8 @@ html_page_dir = data_file_path+"/opt/mailstats/html/"
 template_dir = data_file_path+"/opt/mailstats/templates/"
 logs_dir = data_file_path+"/opt/mailstats/logs/"
 #E-Smith Config DBs
-#db_dir = "/home/e-smith/db"
-db_dir = "/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/"
+db_dir = "/home/e-smith/db/"
+#db_dir = "/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/"
 
 # Column numbering
 Hour = 0
@@ -603,9 +610,11 @@ if __name__ == "__main__":
 	SARejectLevel = int(get_value(ConfigDB, "spamassassin", "RejectLevel","12")) 	#12  #$cdb->get('spamassassin')->prop('RejectLevel');
 	SATagLevel = int(get_value(ConfigDB, "spamassassin", "TagLevel","4")) 			#4  #$cdb->get('spamassassin')->prop('TagLevel');
 
-	EmailAddress = get_value(ConfigDB,"mailstats","Email","Admin")
-	EmailTextOrHTML = get_value(ConfigDB,"mailstats","EmailTextOrHTML","Text") 		#Text or Both or None
-	EmailHost = get_value(ConfigDB,"mailstats","EmailHost","mail.bjsystems.co.uk") 	#Default will be localhost
+	EmailAddress = get_value(ConfigDB,"mailstats","Email","admin@"+DomainName)
+	if '@' not in EmailAddress:
+		EmailAddress = EmailAddress+"@"+DomainName
+	EmailTextOrHTML = get_value(ConfigDB,"mailstats","EmailTextOrHTML","Both") 		#Text or Both or None
+	EmailHost = get_value(ConfigDB,"mailstats","EmailHost","localhost") 			#Default will be localhost
 	EmailPort = int(get_value(ConfigDB,"mailstats","EmailPort","25"))
 	EMailSMTPUser = get_value(ConfigDB,"mailstats","EmailUser")   					#None = default => no authenticatioon needed
 	EMailSMTPPassword = get_value(ConfigDB,"mailstats","EmailPassword")
@@ -630,7 +639,7 @@ if __name__ == "__main__":
 	log_file = logs_dir+'current.log'
 	log_entries,skip_count = read_in_yesterday_log_file(log_file)
 	if len(log_entries) == 0:
-		print(f"No records found in {data_file}")
+		print(f"No records found in {log_file}")
 		quit()
 	else:
 		print(f"Found {len(log_entries)} entries in log for for {formatted_yesterday} skipped {skip_count}")
@@ -888,7 +897,7 @@ if __name__ == "__main__":
 	previous_date_str = previous_date.strftime(day_format)
 	navigation_str_html = "<div class='linksattop'>\
 <a class='prevlink' href='http://${DomainName}/mailstats/mailstats_for_${PreviousDate}.html'>Previous</a>\
-<div class='divseeinbrowser'><a class='seeinbrowser' href='http://${DomainName}/mailstats/mailstats-${TodayDate}.html'>See in browser</a></div>\
+<div class='divseeinbrowser'><a class='seeinbrowser' href='http://${DomainName}/mailstats/mailstats_for_${TodayDate}.html'>See in browser</a></div>\
 <a class='nextlink' href='http://${DomainName}/mailstats/mailstats_for_${NextDate}.html'>Next</a>\
 </div>"
 	template = PageTemplate(navigation_str_html)
@@ -934,7 +943,7 @@ if __name__ == "__main__":
 			)
 		else:
 			# No authentication
-			print("Sending non authenticated")
+			print(f"Sending non authenticated {EmailAddress} {EmailHost}")
 			try:
 				send_email(
 					subject="Mailstats for "+formatted_yesterday,
@@ -945,8 +954,8 @@ if __name__ == "__main__":
 					HTML_content=html_content, 
 					Text_content=text_content 
 				)
-			except exception as e:
-				Print(f"Email EXcpetion {e}")
+			except Exception as e:
+				print(f"Email Exception {e}")
 	
 
 
