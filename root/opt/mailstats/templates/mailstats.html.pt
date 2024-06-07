@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- 1. Take out style for table for email
 	 2. Switch "see in Browser" to "index" in web version 
->
+-->
 <html><head>
 	<meta charset="utf-8">
 	<title>SMEServer Mailstats</title>
@@ -39,28 +39,27 @@
 	</style>
 </head>
 <body>
+   	<div style="width:100%;overflow-x:auto;font-size:1cqw">
     <!---Navigation here-->
     <br />
     <h2>${title}</h2>
     <br />
-   	<div style="width:100%;overflow-x:auto;font-size:1.35cqw">
-		<table border="1">
-			<thead>
-				<tr>
-					<th>Date/Time</th>
-					<th tal:repeat="header column_headers" tal:content="header">Header</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr tal:repeat="row array_2d">
-					<td tal:condition="repeat.row.index == 24" tal:content="'TOTALS'">Totals</td>
-					<td tal:condition="repeat.row.index == 25" tal:content="'PERCENT'">Percent</td>
-					<td tal:condition="repeat.row.index < 24" tal:content="string:${reporting_date}, ${repeat.row.index}">Hour</td>
-					<td tal:repeat="cell row" tal:content="cell">Cell</td>
-				</tr>
-			</tbody>
-		</table>
-    </div>
+	<table border="1">
+		<thead>
+			<tr>
+				<th>Date/Time</th>
+				<th tal:repeat="header column_headers" tal:content="header">Header</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr tal:repeat="row array_2d">
+				<td tal:condition="repeat.row.index == 24" tal:content="'TOTALS'">Totals</td>
+				<td tal:condition="repeat.row.index == 25" tal:content="'PERCENT'">Percent</td>
+				<td tal:condition="repeat.row.index < 24" tal:content="string:${reporting_date}, ${repeat.row.index}">Hour</td>
+				<td tal:repeat="cell row" tal:content="cell">Cell</td>
+			</tr>
+		</tbody>
+	</table>
     <!---Add in sub tables here -->
     <br />
     <footer>${version}</footer>
@@ -78,6 +77,6 @@
 			  src="http://www.w3.org/Icons/valid-xhtml10"
 			  alt="Valid XHTML 1.0!" height="31" width="88" /></a>
 	</p>
-
+	</div>
 </body>
 </html>

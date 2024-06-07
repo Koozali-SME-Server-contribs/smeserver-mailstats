@@ -8,6 +8,7 @@ $event = 'smeserver-mailstats-update';
 foreach my $file (qw(
                 /etc/systemd/system-preset/49-koozali.preset
 		/etc/e-smith/sql/init/99smeserver-mailstats.sql
+		/etc/httpd/conf/httpd.conf
 ))
 {
     templates2events( $file, $event );
@@ -18,7 +19,7 @@ event_link('systemd-reload', $event, '50');
 #action specific to this package
 #event_link('action', $event, '30');
 #services we need to restart
-#safe_symlink('restart', 'root/etc/e-smith/events/$event/services2adjust/<service>)
+safe_symlink('restart', "root/etc/e-smith/events/$event/services2adjust/httpd-e-smith");
 #and Server Mmanager panel link
 #panel_link('somefunction', 'manager');
 

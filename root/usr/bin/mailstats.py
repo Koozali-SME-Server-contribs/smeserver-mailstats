@@ -588,7 +588,14 @@ def send_email(subject, from_email, to_email, smtp_server, smtp_port, HTML_conte
 		if smtp_user and smtp_password:
 			server.login(smtp_user, smtp_password)  # Authenticate only if credentials are provided
 		server.sendmail(from_email, to_email, msg.as_string())
-  
+ 
+def replace_between(text, start, end, replacement):
+    # Escaping start and end in case they contain special regex characters
+    pattern = re.escape(start) + '.*?' + re.escape(end)
+    # Using re.DOTALL to match any character including newline
+    replaced_text = re.sub(pattern, replacement, text, flags=re.DOTALL)
+    return replaced_text
+
 if __name__ == "__main__":
 	try:
 		chameleon_version = pkg_resources.get_distribution("Chameleon").version
@@ -897,7 +904,7 @@ if __name__ == "__main__":
 	previous_date_str = previous_date.strftime(day_format)
 	navigation_str_html = "<div class='linksattop'>\
 <a class='prevlink' href='http://${DomainName}/mailstats/mailstats_for_${PreviousDate}.html'>Previous</a>\
-<div class='divseeinbrowser'><a class='seeinbrowser' href='http://${DomainName}/mailstats/mailstats_for_${TodayDate}.html'>See in browser</a></div>\
+<div class='divshowindex'><a class='showindex' href='http://${DomainName}/mailstats/'>Index of files</a></div>\
 <a class='nextlink' href='http://${DomainName}/mailstats/mailstats_for_${NextDate}.html'>Next</a>\
 </div>"
 	template = PageTemplate(navigation_str_html)
@@ -923,6 +930,9 @@ if __name__ == "__main__":
 			# Send html email (default))
 			filepath = html_page_dir+"mailstats_for_"+formatted_yesterday+".html"
 			html_content = read_html_from_file(filepath)
+			# Replace the Navigation by a "See in browser" prompt
+			replace_str = f"<div class='divseeinbrowser' style='text-align:center;'><a class='seeinbrowser' href='http://{DomainName}/mailstats/mailstats_for_{formatted_yesterday}.html'>See in browser</a></div>"
+			html_content = replace_between(html_content, "<div class='linksattop'>", ">Next</a></div>", replace_str)
 		if EmailTextOrHTML == "Text" or EmailTextOrHTML == "Both":
 			filepath = html_page_dir+"mailstats_for_"+formatted_yesterday+".txt"
 			text_content = read_text_from_file(filepath)
