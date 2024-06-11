@@ -5,7 +5,7 @@
 <html><head>
 	<meta charset="utf-8">
 	<title>SMEServer Mailstats</title>
-	<link rel='stylesheet' type='text/css' href='mailstats.css' />
+	<link rel='stylesheet' type='text/css' href='../css/mailstats.css' />
 	<!-- Check links -->
 	<script>
 		function LinkCheck(url){

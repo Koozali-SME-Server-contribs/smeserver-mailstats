@@ -9,10 +9,8 @@
 #
 # Todo
 # 1. Make "yesterday" parameterised
-# 2. Get data from SMEServer DB records
-# 3. Other stats
-# 4. Percentages for main table
-# 5. Percentages and sort for Sub tables
+# 2  Other stats
+# 3. Extra bits for sub tables
 #
 # Centos7:
 # yum install python3-chameleon --enablerepo=epel
@@ -45,9 +43,6 @@ formatted_yesterday = yesterday.strftime("%Y-%m-%d")
 html_page_dir = data_file_path+"/opt/mailstats/html/"
 template_dir = data_file_path+"/opt/mailstats/templates/"
 logs_dir = data_file_path+"/opt/mailstats/logs/"
-#E-Smith Config DBs
-db_dir = "/home/e-smith/db/"
-#db_dir = "/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/"
 
 # Column numbering
 Hour = 0
@@ -70,7 +65,9 @@ PERCENT = 16
 ColTotals = 24
 ColPercent = 25
 
-
+def is_running_under_thonny():
+    # Check for the 'THONNY_USER_DIR' environment variable
+    return 'THONNY_USER_DIR' in os.environ
 
 # Routines to access the E-Smith dbs
 def parse_entity_line(line):
@@ -122,6 +119,7 @@ def read_config_file(file_path):
 	"""
 	with open(file_path, 'r') as file:
 		config_string = file.read()
+
 	return parse_config(config_string)
 
 def get_value(config_dict, entity, key, default=None):
@@ -519,12 +517,17 @@ def read_html_from_file(filepath):
 	# Need to add in here the contents of the css file at the end of the head section.
 	with open(filepath, 'r', encoding='utf-8') as file:
 		html_contents = file.read()
+	print("reading from html file")
+	print(len(html_contents))
 	# Get Filepath
-	css_path = os.path.dirname(filepath)+"/mailstats.css"
+	css_path = os.path.dirname(filepath)+"/../css/mailstats.css"
+	print(css_path)
 	# Read in CSS 
 	with open(css_path, 'r', encoding='utf-8') as file:
 		css_contents = file.read()
-	html_contents = insert_string_after(html_contents,css_contents,"<!--css here-->")
+	print(len(css_contents))
+	html_contents = insert_string_after(html_contents,"\n"+css_contents,"<!--css here-->")
+	print(len(html_contents))
 	return html_contents
 	
 def read_text_from_file(filepath):
@@ -606,6 +609,12 @@ if __name__ == "__main__":
 	current_datetime = datetime.now()
 	formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M")
 
+	isThonny = is_running_under_thonny()
+	#E-Smith Config DBs
+	if isThonny:
+		db_dir = "/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/"
+	else:
+		db_dir = "/home/e-smith/db/"
 	#From SMEServer DB
 	ConfigDB = read_config_file(db_dir+"configuration")
 
@@ -639,17 +648,19 @@ if __name__ == "__main__":
 	hello_string = "Mailstats:"+Mailstats_version+' for '+DomainName+" at "+formatted_datetime+" for "+formatted_yesterday
 	print(hello_string)
 	version_string = "Chameleon:"+chameleon_version+" Python:"+python_version
+	if isThonny:
+		version_string = version_string + "...under Thonny"
 	print(version_string)
 
 	num_hours = 25  # Represents hours from 0 to 23 - adds extra one for column totals and another for percentages
 
 	log_file = logs_dir+'current.log'
 	log_entries,skip_count = read_in_yesterday_log_file(log_file)
-	if len(log_entries) == 0:
-		print(f"No records found in {log_file}")
-		quit()
-	else:
-		print(f"Found {len(log_entries)} entries in log for for {formatted_yesterday} skipped {skip_count}")
+#	if len(log_entries) == 0:
+#		print(f"No records found in {log_file}")
+#		quit()
+#	else:
+	print(f"Found {len(log_entries)} entries in log for for {formatted_yesterday} skipped {skip_count}")
 	summary_log_entries,skip_count = filter_summary_records(log_entries)
 	print(f"Found {len(summary_log_entries)} summary entries and skipped {skip_count} entries")
 	sorted_log_dict = sort_log_entries(summary_log_entries)
@@ -691,126 +702,130 @@ if __name__ == "__main__":
 	i = 0;
 	sorted_len= len(sorted_log_dict)
 	# Initial call to print the progress bar
-	print_progress_bar(0, sorted_len, prefix='Progress:', suffix='Complete', length=50)
-	for timestamp, data in sorted_log_dict.items():
-		i += 1
-		print_progress_bar(i, sorted_len, prefix='Scanning for main table:', suffix='Complete', length=50)
-		#print(f"{i*100/len}%")
-		# Count of in which hour it falls      
-		#hour = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H')
-		# Parse the timestamp string into a datetime object
-		dt = timestamp
-		hour = dt.hour
-		# parse the data
-		#print(data)
-		parsed_data = parse_data(data)
-		#print(f"parsed_data['action']:{parsed_data['action']}\n")
-		
-		# Increment Count in which headings it falls
-		#Hourly count and column total
-		columnCounts_2d[hour][Hour] += 1
-		columnCounts_2d[ColTotals][Hour] += 1
-		#Row Totals
-		columnCounts_2d[hour][TOTALS] += 1
-		#Total totals
-		columnCounts_2d[ColTotals][TOTALS] += 1
-		#Queued email
-		if parsed_data['action'] == '(queue)':
-			columnCounts_2d[hour][Ham] += 1
-			columnCounts_2d[ColTotals][Ham] += 1
-		#spamassasin
-		if parsed_data['spam-status'].lower().startswith('yes'):
-			#Extract other parameters from this string
-			# example: Yes, score=10.3 required=4.0 autolearn=disable
-			spam_pattern = r'score=([\d.]+)\s+required=([\d.]+)'
-			match = re.search(spam_pattern, parsed_data['spam-status'])
-			if match:
-				score = float(match.group(1))
-				required = float(match.group(2))
-				#print(f"{parsed_data['spam-status']} / {score} {required}")
-				if score >= SARejectLevel:
-					columnCounts_2d[hour][DelSpam] += 1
-					columnCounts_2d[ColTotals][DelSpam] += 1
-				elif score >= required:
-					columnCounts_2d[hour][QuedSpam] += 1
-					columnCounts_2d[ColTotals][QuedSpam] += 1
-		#Local send
-		elif DomainName in parsed_data['sendurl']:
-			columnCounts_2d[hour][Local] += 1
-			columnCounts_2d[ColTotals][Local] += 1
-
-		#Relay or webmail
-		elif not is_private_ip(parsed_data['ip']) and is_private_ip(parsed_data['sendurl1']) and parsed_data['action1'] == 'queued':
-			#Relay
-			if parsed_data['action1'] == 'queued':
-				columnCounts_2d[hour][Relay] += 1
-				columnCounts_2d[ColTotals][Relay] += 1
-		elif WebmailIP in parsed_data['sendurl1'] and not is_private_ip(parsed_data['ip']):
-			#webmail
-			columnCounts_2d[hour][WebMail] += 1
-			columnCounts_2d[ColTotals][WebMail] += 1
+	#unless none to show
+	if sorted_len > 0:
+		if isThonny:
+			print_progress_bar(0, sorted_len, prefix='Progress:', suffix='Complete', length=50)
+		for timestamp, data in sorted_log_dict.items():
+			i += 1
+			if isThonny:
+				print_progress_bar(i, sorted_len, prefix='Scanning for main table:', suffix='Complete', length=50)
+			#print(f"{i*100/len}%")
+			# Count of in which hour it falls      
+			#hour = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H')
+			# Parse the timestamp string into a datetime object
+			dt = timestamp
+			hour = dt.hour
+			# parse the data
+			#print(data)
+			parsed_data = parse_data(data)
+			#print(f"parsed_data['action']:{parsed_data['action']}\n")
 			
-		elif localhost in parsed_data['sendurl']:
-			# but not if it comes from fetchmail
-			if not FETCHMAIL in parsed_data['sendurl1']:
-				# might still be from mailman here
-				if MAILMAN in parsed_data['sendurl1']:
-					#$mailmansendcount++;
-					#$localsendtotal++;
-					columnCounts_2d[hour][MailMan] += 1
-					columnCounts_2d[ColTotals][MailMan] += 1
-					#$counts{$abshour}{$CATMAILMAN}++;
-					#$localflag = 1;
-				else:
-					#Or sent to the DMARC server
-					#check for email address in $DMARC_Report_emails string
-					#my $logemail = $log_items[4];
-					if DMARCDomain in parsed_data['from-email']: #(index($DMARC_Report_emails,$logemail)>=0) or 
-						#$localsendtotal++;
-						#$DMARCSendCount++;
-						localflag = 1;
-					else:
-						# ignore incoming localhost spoofs
-						if not 'msg denied before queued' in parsed_data['error-msg']:
-							#Webmail
-							#$localflag = 1;
-							#$WebMailsendtotal++;
-							columnCounts_2d[hour][WebMail] += 1
-							columnCounts_2d[ColTotals][WebMail] += 1
-							#$WebMailflag = 1;
-			else:
-				#$localflag = 1;
-				#$WebMailsendtotal++;
-				#$WebMailflag = 1;
+			# Increment Count in which headings it falls
+			#Hourly count and column total
+			columnCounts_2d[hour][Hour] += 1
+			columnCounts_2d[ColTotals][Hour] += 1
+			#Row Totals
+			columnCounts_2d[hour][TOTALS] += 1
+			#Total totals
+			columnCounts_2d[ColTotals][TOTALS] += 1
+			#Queued email
+			if parsed_data['action'] == '(queue)':
+				columnCounts_2d[hour][Ham] += 1
+				columnCounts_2d[ColTotals][Ham] += 1
+			#spamassasin
+			if parsed_data['spam-status'].lower().startswith('yes'):
+				#Extract other parameters from this string
+				# example: Yes, score=10.3 required=4.0 autolearn=disable
+				spam_pattern = r'score=([\d.]+)\s+required=([\d.]+)'
+				match = re.search(spam_pattern, parsed_data['spam-status'])
+				if match:
+					score = float(match.group(1))
+					required = float(match.group(2))
+					#print(f"{parsed_data['spam-status']} / {score} {required}")
+					if score >= SARejectLevel:
+						columnCounts_2d[hour][DelSpam] += 1
+						columnCounts_2d[ColTotals][DelSpam] += 1
+					elif score >= required:
+						columnCounts_2d[hour][QuedSpam] += 1
+						columnCounts_2d[ColTotals][QuedSpam] += 1
+			#Local send
+			elif DomainName in parsed_data['sendurl']:
+				columnCounts_2d[hour][Local] += 1
+				columnCounts_2d[ColTotals][Local] += 1
+
+			#Relay or webmail
+			elif not is_private_ip(parsed_data['ip']) and is_private_ip(parsed_data['sendurl1']) and parsed_data['action1'] == 'queued':
+				#Relay
+				if parsed_data['action1'] == 'queued':
+					columnCounts_2d[hour][Relay] += 1
+					columnCounts_2d[ColTotals][Relay] += 1
+			elif WebmailIP in parsed_data['sendurl1'] and not is_private_ip(parsed_data['ip']):
+				#webmail
 				columnCounts_2d[hour][WebMail] += 1
 				columnCounts_2d[ColTotals][WebMail] += 1
-			
-		#Now increment the column which the plugin name indicates
-		if parsed_data['action'] == '(deny)' and parsed_data['error-plugin']:
-			#print(f"Found plugin {parsed_data['error-plugin']}")
-			if parsed_data['error-plugin']:
-				row = search_2d_list(parsed_data['error-plugin'],columnPlugin)
-				if not row == -1:
-					#print(f"Found row: {row}")
-					columnCounts_2d[hour][row] += 1
-					columnCounts_2d[ColTotals][row] += 1
-					# a few ad hoc extra extractons of data
-					if row == Virus:
-						match = virus_pattern.match(parsed_data['action1'])
-						if match:
-							found_viruses[match.group(1)] += 1
-						else:
-							found_viruses[parsed_data['action1']] += 1
-					elif parsed_data['error-plugin'] == 'naughty':
-						match = qpcodes_pattern.match(parsed_data['action1'])
-						if match:
-							rejReason = match.group(1)
-							found_qpcodes[parsed_data['error-plugin']+"-"+rejReason] += 1
-						else:
-							found_qpcodes['Unknown'] += 1
+				
+			elif localhost in parsed_data['sendurl']:
+				# but not if it comes from fetchmail
+				if not FETCHMAIL in parsed_data['sendurl1']:
+					# might still be from mailman here
+					if MAILMAN in parsed_data['sendurl1']:
+						#$mailmansendcount++;
+						#$localsendtotal++;
+						columnCounts_2d[hour][MailMan] += 1
+						columnCounts_2d[ColTotals][MailMan] += 1
+						#$counts{$abshour}{$CATMAILMAN}++;
+						#$localflag = 1;
 					else:
-						found_qpcodes[parsed_data['action1']] += 1
-	print() #seperate the [progress bar]
+						#Or sent to the DMARC server
+						#check for email address in $DMARC_Report_emails string
+						#my $logemail = $log_items[4];
+						if DMARCDomain in parsed_data['from-email']: #(index($DMARC_Report_emails,$logemail)>=0) or 
+							#$localsendtotal++;
+							#$DMARCSendCount++;
+							localflag = 1;
+						else:
+							# ignore incoming localhost spoofs
+							if not 'msg denied before queued' in parsed_data['error-msg']:
+								#Webmail
+								#$localflag = 1;
+								#$WebMailsendtotal++;
+								columnCounts_2d[hour][WebMail] += 1
+								columnCounts_2d[ColTotals][WebMail] += 1
+								#$WebMailflag = 1;
+				else:
+					#$localflag = 1;
+					#$WebMailsendtotal++;
+					#$WebMailflag = 1;
+					columnCounts_2d[hour][WebMail] += 1
+					columnCounts_2d[ColTotals][WebMail] += 1
+				
+			#Now increment the column which the plugin name indicates
+			if parsed_data['action'] == '(deny)' and parsed_data['error-plugin']:
+				#print(f"Found plugin {parsed_data['error-plugin']}")
+				if parsed_data['error-plugin']:
+					row = search_2d_list(parsed_data['error-plugin'],columnPlugin)
+					if not row == -1:
+						#print(f"Found row: {row}")
+						columnCounts_2d[hour][row] += 1
+						columnCounts_2d[ColTotals][row] += 1
+						# a few ad hoc extra extractons of data
+						if row == Virus:
+							match = virus_pattern.match(parsed_data['action1'])
+							if match:
+								found_viruses[match.group(1)] += 1
+							else:
+								found_viruses[parsed_data['action1']] += 1
+						elif parsed_data['error-plugin'] == 'naughty':
+							match = qpcodes_pattern.match(parsed_data['action1'])
+							if match:
+								rejReason = match.group(1)
+								found_qpcodes[parsed_data['error-plugin']+"-"+rejReason] += 1
+							else:
+								found_qpcodes['Unknown'] += 1
+						else:
+							found_qpcodes[parsed_data['action1']] += 1
+		print() #seperate the [progress bar]
 	# Compute percentages
 	total_Count  = columnCounts_2d[ColTotals][TOTALS]
 	#Column of percentages
@@ -844,24 +859,27 @@ if __name__ == "__main__":
 	i = 0
 	j = 0
 	log_len = len(log_entries)
-	print_progress_bar(0, log_len, prefix='Progress:', suffix='Complete', length=50)
-	for data in log_entries:
-		i += 1
-		print_progress_bar(i, log_len, prefix='Scanning for sub tables:', suffix='Complete', length=50)
-		#Pull out Geoip countries for analysis table
-		if "check_badcountries: GeoIP Country" in data:
-			j += 1
-		match = geoip_pattern.match(data[1])
-		if match:
-			country = match.group(1)
-			found_countries[country] += 1
-			total_countries += 1
-			continue
-		#Pull out DMARC approvals
-		match = dmarc_pattern.match(data[1])
-		if match:
-			DMARCOkCount += 1
-			continue
+	if log_len > 0:
+		if isThonny:
+			print_progress_bar(0, log_len, prefix='Progress:', suffix='Complete', length=50)
+		for data in log_entries:
+			i += 1
+			if isThonny:
+				print_progress_bar(i, log_len, prefix='Scanning for sub tables:', suffix='Complete', length=50)
+			#Pull out Geoip countries for analysis table
+			if "check_badcountries: GeoIP Country" in data:
+				j += 1
+			match = geoip_pattern.match(data[1])
+			if match:
+				country = match.group(1)
+				found_countries[country] += 1
+				total_countries += 1
+				continue
+			#Pull out DMARC approvals
+			match = dmarc_pattern.match(data[1])
+			if match:
+				DMARCOkCount += 1
+				continue
 			
 	#print(f"J:{j} I:{i}")
 	#Now apply the results to the chameleon template - main table
@@ -871,11 +889,17 @@ if __name__ == "__main__":
 	with open(template_path, 'r') as template_file:
 		template_content = template_file.read()
 	# Create a Chameleon template instance
-	template = PageTemplate(template_content)
+	try:
+		template = PageTemplate(template_content)
 	# Render the template with the 2D array data and column headers
-	rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, reporting_date=formatted_yesterday, title=hello_string, version=version_string)
+		try:
+			rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, reporting_date=formatted_yesterday, title=hello_string, version=version_string)
+		except Exception as e:
+			print(f"Chameleon template Exception {e}")
+	except Exception as e:
+		print(f"Chameleon render Exception {e}")
+		
 	total_html = rendered_html
-
 	#Now apply the results to the chameleon template - subservient tables
 	#qpsmtd codes
 	qpsmtpd_headers = ["Code",'Count','Percent','Reason']
@@ -907,8 +931,14 @@ if __name__ == "__main__":
 <div class='divshowindex'><a class='showindex' href='http://${DomainName}/mailstats/'>Index of files</a></div>\
 <a class='nextlink' href='http://${DomainName}/mailstats/mailstats_for_${NextDate}.html'>Next</a>\
 </div>"
-	template = PageTemplate(navigation_str_html)
-	Nav_str = template(PreviousDate=previous_date_str,NextDate=next_date_str,TodayDate=formatted_yesterday,DomainName=DomainName)
+	try:
+		template = PageTemplate(navigation_str_html)
+		try:
+			Nav_str = template(PreviousDate=previous_date_str,NextDate=next_date_str,TodayDate=formatted_yesterday,DomainName=DomainName)
+		except Exception as e:
+			print(f"Chameleon nav template Exception {e}")
+	except Exception as e:
+		print(f"Chameleon nav render Exception {e}")
 	# And insert it
 	total_html = insert_string_after(total_html,Nav_str, "<!---Navigation here-->")
 
@@ -930,9 +960,17 @@ if __name__ == "__main__":
 			# Send html email (default))
 			filepath = html_page_dir+"mailstats_for_"+formatted_yesterday+".html"
 			html_content = read_html_from_file(filepath)
+			print(len(html_content))
 			# Replace the Navigation by a "See in browser" prompt
 			replace_str = f"<div class='divseeinbrowser' style='text-align:center;'><a class='seeinbrowser' href='http://{DomainName}/mailstats/mailstats_for_{formatted_yesterday}.html'>See in browser</a></div>"
+			print(len(replace_str))
+			print(len(html_content))
 			html_content = replace_between(html_content, "<div class='linksattop'>", ">Next</a></div>", replace_str)
+			# Write out te email html to a web page
+			email_file = html_page_dir + "Email_mailstats_for_"+formatted_yesterday
+			with open(email_file+'.html', 'w') as output_file:
+				output_file.write(html_content)
+			#print(html_content)
 		if EmailTextOrHTML == "Text" or EmailTextOrHTML == "Both":
 			filepath = html_page_dir+"mailstats_for_"+formatted_yesterday+".txt"
 			text_content = read_text_from_file(filepath)
