@@ -31,6 +31,7 @@ from collections import defaultdict
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import codecs
 
 Mailstats_version = '1.2'
 
@@ -188,25 +189,29 @@ def read_in_yesterday_log_file(file_path):
 	# Get current date and calculate yesterday's date
 	log_entries = []
 	skip_record_count = 0;
-	with open(file_path, 'r') as file:
-		for Line in file:
-			#extract time stamp
-			try:
-				entry = split_timestamp_and_data(Line)
-				# compare with yesterday
-				timestamp_str = truncate_microseconds(entry[0])
-			except ValueError as e:
-				#print(f"ValueError {e} on timestamp create {timestamp_str}:{entry[0]} {entry[1]}")
-				skip_record_count += 1
-				continue
-			# Parse the timestamp string into a datetime object
-			# Ignoring extra microseconds 
-			try:
-				timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
-			except ValueError as e:
-				print(f"ValueError {e} on timestamp extract {timestamp_str}:{entry[1]}")
-			if timestamp.date() == yesterday.date():
-				log_entries.append((timestamp, entry[1]))
+	with codecs.open(file_path, 'rb','utf-8', errors='replace') as file:
+		try:
+			for Line in file:
+				#extract time stamp
+				try:
+					entry = split_timestamp_and_data(Line)
+					# compare with yesterday
+					timestamp_str = truncate_microseconds(entry[0])
+				except ValueError as e:
+					#print(f"ValueError {e} on timestamp create {timestamp_str}:{entry[0]} {entry[1]}")
+					skip_record_count += 1
+					continue
+				# Parse the timestamp string into a datetime object
+				# Ignoring extra microseconds 
+				try:
+					timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+				except ValueError as e:
+					print(f"ValueError {e} on timestamp extract {timestamp_str}:{entry[1]}")
+				if timestamp.date() == yesterday.date():
+					log_entries.append((timestamp, entry[1]))
+		except UnicodeDecodeError as e:
+			#print(f"{Line} {len(log_entries)} {e} ")
+			pass
 	return [log_entries,skip_record_count]
 	
 def filter_summary_records(log_entries):
