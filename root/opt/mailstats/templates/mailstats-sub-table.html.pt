@@ -1,5 +1,5 @@
 <h2>${title}</h2>
-    <table border="1">
+    <table style="border-collapse:collapse;">
         <thead>
             <tr>
                 <th tal:repeat="header column_headers">${header}</th>

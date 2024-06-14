@@ -44,7 +44,7 @@
     <br />
     <h2>${title}</h2>
     <br />
-	<table border="1">
+	<table style="border-collapse:collapse;">
 		<thead>
 			<tr>
 				<th>Date/Time</th>
