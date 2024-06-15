@@ -45,24 +45,25 @@ html_page_dir = data_file_path+"/opt/mailstats/html/"
 template_dir = data_file_path+"/opt/mailstats/templates/"
 logs_dir = data_file_path+"/opt/mailstats/logs/"
 
-# Column numbering
+# Column numbering (easy to renumber or add one in)
 Hour = 0
-WebMail = 1
-Local = 2
-MailMan = 3
-Relay = 4
-DMARC = 5
-Virus = 6
-RBLDNS = 7
-Geoip = 8
-NonConf = 9
-RejLoad = 10
-Karma = 11
-DelSpam = 12
-QuedSpam = 13
-Ham = 14
-TOTALS = 15
-PERCENT = 16
+WebMail = Hour + 1
+Local = WebMail + 1
+MailMan = Local + 1
+Relay = MailMan + 1
+DMARC = Relay + 1
+Virus = DMARC + 1
+RBLDNS = Virus + 1
+Geoip = RBLDNS + 1
+NonConf = Geoip + 1
+RejLoad = NonConf + 1
+Karma = RejLoad + 1
+DelSpam = Karma + 1
+QuedSpam = DelSpam + 1
+Ham = QuedSpam + 1
+TOTALS = Ham + 1
+PERCENT = TOTALS + 1
+
 ColTotals = 24
 ColPercent = 25
 
@@ -452,7 +453,7 @@ def render_sub_table(table_title,table_headers,found_values):
 	total_sum = sum(found_values.values())
 	# and add in list with second element the percentage
 	# Create a list of tuples with each tuple containing (key, value, percentage)
-	sub_result = [(key, value, (round(round(value / total_sum,4) * 100,2))) for key, value in found_values.items()]
+	sub_result = [(key, value, f"{round(value / total_sum * 100, 2)}%") for key, value in found_values.items()]
 	sub_result.sort(key=lambda x: x[2], reverse=True)  # Sort by percentage in descending order
 
 		
@@ -834,23 +835,23 @@ if __name__ == "__main__":
 	# Compute percentages
 	total_Count  = columnCounts_2d[ColTotals][TOTALS]
 	#Column of percentages
-	for row in range(24):
+	for row in range(ColTotals):
 		if total_Count == 0:
 			percentage_of_total = 0
 		else:
-			percentage_of_total = round(round(columnCounts_2d[row][TOTALS] / total_Count,4) * 100,2)
+			percentage_of_total = f"{round(round(columnCounts_2d[row][TOTALS] / total_Count,4) * 100,1)}%"
 		columnCounts_2d[row][PERCENT] = percentage_of_total
 	#Row of percentages
 	for col in range(TOTALS):
 		if total_Count == 0:
 			percentage_of_total = 0
 		else:
-			percentage_of_total = round(round(columnCounts_2d[ColTotals][col] / total_Count,4) * 100,2)
+			percentage_of_total = f"{round(round(columnCounts_2d[ColTotals][col] / total_Count,4) * 100,1)}%"
 		columnCounts_2d[ColPercent][col] = percentage_of_total
 	# and drop in the 100% to make it look correct!
-	columnCounts_2d[ColPercent][PERCENT] = 100
-	columnCounts_2d[ColTotals][PERCENT] = 100
-	columnCounts_2d[ColPercent][TOTALS] = 100
+	columnCounts_2d[ColPercent][PERCENT] = '100%'
+	columnCounts_2d[ColTotals][PERCENT] = '100%'
+	columnCounts_2d[ColPercent][TOTALS] = '100%'
 	
 	# Now scan for the other lines in the log of interest
 	found_countries = defaultdict(int)

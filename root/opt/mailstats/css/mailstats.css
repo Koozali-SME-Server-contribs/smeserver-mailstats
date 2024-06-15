@@ -4,6 +4,12 @@ table {
 }
 
 
+tr.row-total, tr.row-percent , td.col-15, td.col-16 {
+    font-weight: bold;
+}
+
+
+
 tr,td,th {
 	border:1px solid;
 }
