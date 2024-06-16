@@ -495,16 +495,16 @@ def read_html_from_file(filepath):
 	with open(filepath, 'r', encoding='utf-8') as file:
 		html_contents = file.read()
 	print("reading from html file")
-	print(len(html_contents))
+	#print(len(html_contents))
 	# Get Filepath
 	css_path = os.path.dirname(filepath)+"/../css/mailstats.css"
-	print(css_path)
+	#print(css_path)
 	# Read in CSS 
 	with open(css_path, 'r', encoding='utf-8') as file:
 		css_contents = file.read()
-	print(len(css_contents))
+	#print(len(css_contents))
 	html_contents = insert_string_after(html_contents,"\n"+css_contents,"<!--css here-->")
-	print(len(html_contents))
+	#print(len(html_contents))
 	return html_contents
 	
 def read_text_from_file(filepath):
@@ -998,6 +998,3 @@ if __name__ == "__main__":
 				)
 			except Exception as e:
 				print(f"Email Exception {e}")
-	
-
-
