@@ -32,6 +32,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import codecs
+import argparse
 
 Mailstats_version = '1.2'
 
@@ -614,6 +615,21 @@ if __name__ == "__main__":
 	python_version = python_version[:8]
 	current_datetime = datetime.now()
 	formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M")
+	
+	# Command line parameters
+	parser = argparse.ArgumentParser(description="Mailstats")
+	parser.add_argument('-d', '--date', help='Specify a valid date (yyyy-mm-dd) for the analysis', default=formatted_yesterday)
+	args = parser.parse_args()
+	analysis_date = args.date
+	# and check its format is valid
+	try:
+		datetime.strptime(analysis_date, '%Y-%m-%d')
+	except ValueError:
+		print("Specify a valid date (yyyy-mm-dd) for the analysis")
+		quit()
+
+	#print(analysis_date)
+	#quit()
 
 	isThonny = is_running_under_thonny()
 	#E-Smith Config DBs
@@ -651,7 +667,7 @@ if __name__ == "__main__":
 	MAILMAN = "bounces";        		#sender when mailman sending when orig is localhost
 	DMARCDomain="dmarc"; 				#Pattern to recognised DMARC sent emails (this not very reliable, as the email address could be anything)
 	DMARCOkPattern="dmarc: pass";  		#Pattern to use to detect DMARC approval
-	hello_string = "Mailstats:"+Mailstats_version+' for '+DomainName+" at "+formatted_datetime+" for "+formatted_yesterday
+	hello_string = "Mailstats:"+Mailstats_version+' for '+DomainName+" at "+formatted_datetime+" for "+analysis_date
 	print(hello_string)
 	version_string = "Chameleon:"+chameleon_version+" Python:"+python_version
 	if isThonny:
@@ -666,7 +682,7 @@ if __name__ == "__main__":
 #		print(f"No records found in {log_file}")
 #		quit()
 #	else:
-	print(f"Found {len(log_entries)} entries in log for for {formatted_yesterday} skipped {skip_count}")
+	print(f"Found {len(log_entries)} entries in log for for {analysis_date} skipped {skip_count}")
 	summary_log_entries,skip_count = filter_summary_records(log_entries)
 	print(f"Found {len(summary_log_entries)} summary entries and skipped {skip_count} entries")
 	sorted_log_dict = sort_log_entries(summary_log_entries)
@@ -698,7 +714,7 @@ if __name__ == "__main__":
 	columnPlugin[Karma] = ['karma']
 			
 	columnHeaders_len = len(columnHeaders)
-	columnCounts_2d = initialize_2d_array(num_hours, columnHeaders_len,formatted_yesterday)
+	columnCounts_2d = initialize_2d_array(num_hours, columnHeaders_len,analysis_date)
 	
 	virus_pattern = re.compile(r"Virus found: (.*)")
 	found_viruses = defaultdict(int)
@@ -899,7 +915,7 @@ if __name__ == "__main__":
 		template = PageTemplate(template_content)
 	# Render the template with the 2D array data and column headers
 		try:
-			rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, reporting_date=formatted_yesterday, title=hello_string, version=version_string)
+			rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, reporting_date=analysis_date, title=hello_string, version=version_string)
 		except Exception as e:
 			print(f"Chameleon template Exception {e}")
 	except Exception as e:
@@ -924,7 +940,7 @@ if __name__ == "__main__":
 	#Add in navigation html - next/previous/see in browser
 	day_format = "%Y-%m-%d"
 	# Convert the time string to a datetime object
-	date_obj = datetime.strptime(formatted_yesterday, day_format)
+	date_obj = datetime.strptime(analysis_date, day_format)
 	# Compute the next date by adding one day
 	next_date = date_obj + timedelta(days=1)
 	# Compute the previous date by subtracting one day
@@ -940,7 +956,7 @@ if __name__ == "__main__":
 	try:
 		template = PageTemplate(navigation_str_html)
 		try:
-			Nav_str = template(PreviousDate=previous_date_str,NextDate=next_date_str,TodayDate=formatted_yesterday,DomainName=DomainName)
+			Nav_str = template(PreviousDate=previous_date_str,NextDate=next_date_str,TodayDate=analysis_date,DomainName=DomainName)
 		except Exception as e:
 			print(f"Chameleon nav template Exception {e}")
 	except Exception as e:
@@ -949,7 +965,7 @@ if __name__ == "__main__":
 	total_html = insert_string_after(total_html,Nav_str, "<!---Navigation here-->")
 
 	# Write the rendered HTML to a file
-	output_path = html_page_dir+'mailstats_for_'+formatted_yesterday
+	output_path = html_page_dir+'mailstats_for_'+analysis_date
 	output_path = output_path.replace(' ','_')
 	with open(output_path+'.html', 'w') as output_file:
 		output_file.write(total_html)
@@ -964,28 +980,28 @@ if __name__ == "__main__":
 	if EmailTextOrHTML:
 		if EmailTextOrHTML == "HTML" or EmailTextOrHTML == "Both":
 			# Send html email (default))
-			filepath = html_page_dir+"mailstats_for_"+formatted_yesterday+".html"
+			filepath = html_page_dir+"mailstats_for_"+analysis_date+".html"
 			html_content = read_html_from_file(filepath)
 			print(len(html_content))
 			# Replace the Navigation by a "See in browser" prompt
-			replace_str = f"<div class='divseeinbrowser' style='text-align:center;'><a class='seeinbrowser' href='http://{DomainName}/mailstats/mailstats_for_{formatted_yesterday}.html'>See in browser</a></div>"
+			replace_str = f"<div class='divseeinbrowser' style='text-align:center;'><a class='seeinbrowser' href='http://{DomainName}/mailstats/mailstats_for_{analysis_date}.html'>See in browser</a></div>"
 			print(len(replace_str))
 			print(len(html_content))
 			html_content = replace_between(html_content, "<div class='linksattop'>", ">Next</a></div>", replace_str)
 			# Write out te email html to a web page
-			email_file = html_page_dir + "Email_mailstats_for_"+formatted_yesterday
+			email_file = html_page_dir + "Email_mailstats_for_"+analysis_date
 			with open(email_file+'.html', 'w') as output_file:
 				output_file.write(html_content)
 			#print(html_content)
 		if EmailTextOrHTML == "Text" or EmailTextOrHTML == "Both":
-			filepath = html_page_dir+"mailstats_for_"+formatted_yesterday+".txt"
+			filepath = html_page_dir+"mailstats_for_"+analysis_date+".txt"
 			text_content = read_text_from_file(filepath)
 		if EMailSMTPUser:
 			# Send authenticated
 			print("Sending authenticated")
 			send_email(
 				html_content=email_content, 
-				subject="Mailstats for "+formatted_yesterday,
+				subject="Mailstats for "+analysis_date,
 				from_email="mailstats@"+DomainName, 
 				to_email=EmailAddress, 
 				smtp_server=EmailHost, 
@@ -1000,7 +1016,7 @@ if __name__ == "__main__":
 			print(f"Sending non authenticated {EmailAddress} {EmailHost}")
 			try:
 				send_email(
-					subject="Mailstats for "+formatted_yesterday,
+					subject="Mailstats for "+analysis_date,
 					from_email="mailstats@"+DomainName, 
 					to_email=EmailAddress, 
 					smtp_server=EmailHost, 
