@@ -44,6 +44,8 @@
     <br />
     <h2>${title}</h2>
     <br />
+    <!---Add in header information here -->
+    <br />
 	<table style="border-collapse:collapse;">
 		<thead>
 			<tr>
