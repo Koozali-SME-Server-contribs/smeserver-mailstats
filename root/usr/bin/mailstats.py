@@ -11,16 +11,24 @@
 #   -d DATE, --date DATE  Specify a valid date (yyyy-mm-dd) for the analysis
 #   -ef EMAILFILE, --emailfile EMAILFILE
 #                       Save an html file of the email sent (y/N)
+#   -tf TEXTFILE, --textfile TEXTFILE
+#                       Save a txt file of the html page (y/N)
+#
 #
 # Re-written in python from Mailstats.pl (Perl) to conform to SME11 / Postfix / qpsmtpd log formats
 # and html output added
 #
-# Todo
+# Todo:
 # 2  Other stats
 # 3. Extra bits for sub tables
 # 4. Percent char causes sort to fail - look at adding it in the template
 # 5. Chase disparity in counts betweeen old mailstats and this
-# 6. Count emails delivered over 25/587/465
+# 6. Count emails delivered over ports 25/587/465 (SMTPS?)
+# 7. use tmp for txt file and copy to html dir if required.
+# 
+# Future:
+# 1. Write summary line for each transaction to DB and link to it through cell in main table
+# 2. Link each summary line through DB to actual transaction lines
 #
 # Centos7:
 # yum install python3-chameleon --enablerepo=epel
@@ -43,6 +51,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import codecs
 import argparse
+import tempfile
 
 Mailstats_version = '1.2'
 
@@ -414,8 +423,6 @@ def split_timestamp_and_data(log_entry: str) -> list:
 	
 	timestamp = ' '.join(parts[:2])
 	rest_of_data = parts[2]
-	#print(f"{timestamp} {rest_of_data}")
-	
 	return [timestamp, rest_of_data]
 	
 def render_sub_table(table_title,table_headers,found_values):
@@ -638,6 +645,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description="Mailstats")
 	parser.add_argument('-d', '--date', help='Specify a valid date (yyyy-mm-dd) for the analysis', default=formatted_yesterday)
 	parser.add_argument('-ef', '--emailfile', help='Save an html file of the email sent (y/N)', default='n')
+	parser.add_argument('-tf', '--textfile', help='Save a txt file of the html page (y/N)', default='n')
 	args = parser.parse_args()
 	analysis_date = args.date
 	# and check its format is valid
@@ -651,6 +659,7 @@ if __name__ == "__main__":
 	#quit()
 	anaysis_date_obj = datetime.strptime(analysis_date, '%Y-%m-%d')
 	noemailfile = args.emailfile.lower()  == 'n'
+	notextfile = args.textfile.lower()  == 'n'
 
 	isThonny = is_running_under_thonny()
 	#E-Smith Config DBs
@@ -1051,9 +1060,19 @@ if __name__ == "__main__":
 		output_file.write(total_html)
 	#and create a text version if the local version of html2text is suffiicent
 	if get_html2text_version() == '2019.9.26':
-		html_to_text(output_path+'.html',output_path+'.txt')
-	print(f"Rendered HTML saved to {output_path}.html/txt")
-	
+		# Get a temporary file name
+		temp_file_name = tempfile.mktemp()
+		html_to_text(output_path+'.html',temp_file_name)
+		print(f"Rendered HTML saved to {temp_file_name}")
+		# and save it if required
+		if not notextfile:
+			text_file_path = output_path+'.txt'
+			# and rename it
+			os.rename(temp_file_name, text_file_path)
+		else:
+			text_file_path = temp_file_name
+	else:
+		text_file_path = ""
 	html_content = None
 	text_content = None
 	#Now see if Email required
@@ -1062,20 +1081,20 @@ if __name__ == "__main__":
 			# Send html email (default))
 			filepath = html_page_dir+"mailstats_for_"+analysis_date+".html"
 			html_content = read_html_from_file(filepath)
-			#print(len(html_content))
 			# Replace the Navigation by a "See in browser" prompt
 			replace_str = f"<div class='divseeinbrowser' style='text-align:center;'><a class='seeinbrowser' href='http://{DomainName}/mailstats/mailstats_for_{analysis_date}.html'>See in browser</a></div>"
-			#print(len(replace_str))
-			#print(len(html_content))
 			html_content = replace_between(html_content, "<div class='linksattop'>", ">Next</a></div>", replace_str)
 			if not noemailfile:
-				# Write out te email html to a web page
+				# Write out the email html to a web page
 				email_file = html_page_dir + "Email_mailstats_for_"+analysis_date
 				with open(email_file+'.html', 'w') as output_file:
 					output_file.write(html_content)
 		if EmailTextOrHTML == "Text" or EmailTextOrHTML == "Both":
-			filepath = html_page_dir+"mailstats_for_"+analysis_date+".txt"
-			text_content = read_text_from_file(filepath)
+			#filepath = html_page_dir+"mailstats_for_"+analysis_date+".txt"
+			if not text_file_path == "":
+				text_content = read_text_from_file(text_file_path)
+			else:
+				text_content = "No text avaiable as html2text (was not "
 		if EMailSMTPUser:
 			# Send authenticated
 			print("Sending authenticated")
