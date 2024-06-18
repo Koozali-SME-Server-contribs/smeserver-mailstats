@@ -25,7 +25,7 @@
 # 4. Percent char causes sort to fail - look at adding it in the template
 # 5. Chase disparity in counts betweeen old mailstats and this
 # 6. Count emails delivered over ports 25/587/465 (SMTPS?)
-# 7. Incorporate the (rpm) build date into the version 
+# 7. Arrange that the spec file overwrites the date even if it has been overwritten before
 # 
 # Future:
 # 1. Write summary line for each transaction to DB and link to it through cell in main table
@@ -55,9 +55,11 @@ import argparse
 import tempfile
 
 Mailstats_version = '1.2'
-build_date_time = "__BUILD_DATE_TIME__" 
-if build_date_time == "__BUILD_DATE_TIME__":
-    build_date_time = "Unknown"
+build_date_time = "2024-06-18 12:03:40OURCE" 
+build_date_time = build_date_time[:19]  #Take out crap that sneaks in.
+
+#if build_date_time == "2024-06-18 12:03:40OURCE":
+#    build_date_time = "Unknown"
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 data_file_path = script_dir+'/../..'    #back to the top
@@ -661,33 +663,28 @@ if __name__ == "__main__":
 		print("Specify a valid date (yyyy-mm-dd) for the analysis")
 		quit()
 
-	#print(analysis_date)
-	#quit()
 	anaysis_date_obj = datetime.strptime(analysis_date, '%Y-%m-%d')
 	noemailfile = args.emailfile.lower()  == 'n'
 	notextfile = args.textfile.lower()  == 'n'
 	isThonny = is_running_under_thonny()
+	
+	#E-Smith Config DBs
+	if isThonny:
+		db_dir = "/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/"
+	else:
+		db_dir = "/home/e-smith/db/"
+		
+	#From SMEServer DB
+	ConfigDB = read_config_file(db_dir+"configuration")
+
+	DomainName = get_value(ConfigDB, "DomainName", "type") 							#'bjsystems.co.uk' #  $cdb->get('DomainName')->value;
 	
 	hello_string = "Mailstats:"+Mailstats_version+' for '+DomainName+" at "+formatted_datetime+" for "+analysis_date
 	print(hello_string)
 	version_string = "Chameleon:"+chameleon_version+" Python:"+python_version
 	if isThonny:
 		version_string = version_string + "...under Thonny"
-	if args.version:
-		print(f"{Mailstats_version} {version_string}")
-		quit()
-
 	print(version_string)
-
-	#E-Smith Config DBs
-	if isThonny:
-		db_dir = "/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/"
-	else:
-		db_dir = "/home/e-smith/db/"
-	#From SMEServer DB
-	ConfigDB = read_config_file(db_dir+"configuration")
-
-	DomainName = get_value(ConfigDB, "DomainName", "type") 							#'bjsystems.co.uk' #  $cdb->get('DomainName')->value;
 
 	RHSenabled = get_value(ConfigDB, "qpsmtpd", "RHSBL","disabled") == "enabled"    #True  #( $cdb->get('qpsmtpd')->prop('RHSBL') eq 'enabled' );
 	DNSenabled = get_value(ConfigDB, "qpsmtpd", "DNSBL","disabled") == "enabled"  	#True  #( $cdb->get('qpsmtpd')->prop('DNSBL') eq 'enabled' );
@@ -814,36 +811,36 @@ if __name__ == "__main__":
 					if parsed_data['spam-status'].lower().startswith('no'):
 						#Extract other parameters from this string
 						# example: No, score=-3.9 
-						spam_pattern = r'score=(-?\d+\.\d+) required=(-?\d+\.\d+)'
+						spam_pattern = re.compile(r'score=(-?\d+\.\d+) required=(-?\d+\.\d+)')
 						match = re.search(spam_pattern, parsed_data['spam-status'])
 						if match:
 							score = float(match.group(1))
-							if score < SATagLevel:
+							#print(score,SATagLevel)
+							if score < float(SATagLevel):
 								# Accumulate allowed score (inc negatives?)
 								hamavg += score
 								hamcount += 1
-							else:
-								spamavg += score
-								spamqueuedcount += 1
 			#spamassasin rejects
 			if parsed_data.get('spam-status') is not None and isinstance(parsed_data['spam-status'], str):
 				if parsed_data['spam-status'].lower().startswith('yes'):
 					#Extract other parameters from this string
 					# example: Yes, score=10.3 required=4.0 autolearn=disable
-					spam_pattern = r'score=(-?\d+\.\d+) required=(-?\d+\.\d+)'
+					spam_pattern = re.compile(r'score=(-?\d+\.\d+) required=(-?\d+\.\d+)')
 					match = re.search(spam_pattern, parsed_data['spam-status'])
 					if match:
 						score = float(match.group(1))
 						required = float(match.group(2))
 						#print(f"{parsed_data['spam-status']} / {score} {required}")
-						rejectspamavg += score
-						rejectspamcount += 1
 						if score >= SARejectLevel:
 							columnCounts_2d[hour][DelSpam] += 1
 							columnCounts_2d[ColTotals][DelSpam] += 1
+							rejectspamavg += score
+							rejectspamcount += 1
 						elif score >= required:
 							columnCounts_2d[hour][QuedSpam] += 1
 							columnCounts_2d[ColTotals][QuedSpam] += 1
+							spamavg += score
+							spamqueuedcount += 1
 				
 				#Local send
 				elif DomainName in parsed_data['sendurl']:
@@ -956,7 +953,7 @@ if __name__ == "__main__":
 	found_countries = defaultdict(int)
 	geoip_pattern = re.compile(r".*check_badcountries: GeoIP Country: (.*)")
 	dmarc_pattern = re.compile(r".*dmarc: pass")
-	helo_pattern = re.compile(r"Accepted connection.*?from (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) \/ ([\w.-]+)")
+	helo_pattern = re.compile(r".*Accepted connection.*?from (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) \/ ([\w.-]+)")
 	total_countries = 0
 	DMARCOkCount = 0
 	totalinternalsmtpsessions = 0
@@ -982,17 +979,16 @@ if __name__ == "__main__":
 					totalinternalsmtpsessions += 1
 				else:
 					totalexternalsmtpsessions += 1
-			continue
+				continue
 					
 			#Pull out Geoip countries for analysis table
-			if "check_badcountries: GeoIP Country" in data:
+			match = geoip_pattern.match(data[1])
+			if match:
 				j += 1
-				match = geoip_pattern.match(data[1])
-				if match:
-					country = match.group(1)
-					found_countries[country] += 1
-					total_countries += 1
-					continue
+				country = match.group(1)
+				found_countries[country] += 1
+				total_countries += 1
+				continue
 					
 			#Pull out DMARC approvals
 			match = dmarc_pattern.match(data[1])
