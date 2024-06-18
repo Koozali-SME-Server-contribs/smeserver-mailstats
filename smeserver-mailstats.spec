@@ -1,17 +1,31 @@
-# $Id: smeserver-mailstats.spec,v 1.8 2023/02/15 09:40:09 brianr Exp $
+# $Id: smeserver-mailstats.spec,v 1.7 2021/04/02 11:11:44 brianr Exp $
 # Authority: brianread
 # Name: Brian Read 
 
 Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
-%define version 1.2
-%define release 1
+%define version 1.1
+%define release 18
 Version: %{version}
 Release: %{release}%{?dist}
 License: GPL
 Group: SME/addon
-Source: %{name}-%{version}.tar.xz
+Source: %{name}-%{version}.tgz
+Patch0: smeserver-mailstats-1.1-random-cron_and_spamfilter-stats-7-update.patch
+Patch1: smeserver-mailstats-1.1.bz8957.Create_the_mailstats_user.patch
+Patch2: smeserver-mailstats-1.1.bz8656.Spamassassin_scores_and_tags.patch
+Patch3: smeserver-mailstats-1.0-628.patch
+Patch4: smeserver-mailstats-1.1.bz9588.qpsmtpd0_96compatible.patch
+Patch5: smeserver-mailstats-1.1.bz9717-9716email_specific_stats.patch
+Patch6: smeserver-mailstats-1.1.bz9888.geoip.patch
+Patch7: smeserver-mailstats-1.1.bz10858_10327.cleanup_and_email_truncate.patch
+Patch8: smeserver-mailstats-1.1-uninitialised-variable-on-no-data
+Patch9: smeserver-mailstats-1.1-Clear-up-uninitialsed-use-of-lc.patch
+Patch10:smeserver-mailstats-1.1-Add-Update-event-to-createlinks.patch
+Patch11:smeserver-mailstats-1.1-Take-out-dot-in-cron-file-and-also-re-direct-errors-to-syslog.patch
+Patch12:smeserver-mailstats-1.1-bz12327-Add-in-imap-authorisation-log-string.patch
+Patch13:smeserver-mailstats-1.1-Pull-in-python-rewrite-from-sme11-dev.patch
 
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-buildroot
 BuildArchitectures: noarch
@@ -19,22 +33,19 @@ Requires: smeserver-release => 9.0
 Requires: qpsmtpd >= 0.96
 BuildRequires: e-smith-devtools >= 1.13.1-03
 Requires: perl-Switch
+BuildRequires:  python36
+Requires:       python36
+Requires:		html2text
+Requires:		python3-chameleon
+AutoReqProv: no
 
 %description
 A script that via cron.d e-mails mail statistics to admin on a daily basis.
 See http://www.contribs.org/bugzilla/show_bug.cgi?id=819
 
 %changelog
-* Tue May 28 2024 Brian Read <brianr@koozali.org> 1.2-1.sme
-- Rewrite in python and conform to new postfix SME11 log format [SME: ]
-
-
-* Sun Jul 09 2023 cvs2git.sh aka Brian Read <brianr@koozali.org> 1.1-18.sme
-- Roll up patches and move to git repo [SME: 12338]
-
-* Sun Jul 09 2023 BogusDateBot
-- Eliminated rpmbuild "bogus date" warnings due to inconsistent weekday,
-  by assuming the date is correct and changing the weekday.
+* Fri Jun 07 2024 Brian Read <brianr@koozali.org> 1.1-18.sme
+- Pull in python re-write from SME11 dev [SME: ]
 
 * Wed Feb 15 2023 Brian Read <brianr@bjsystems.co.uk> 1.1-17.sme
 - Add-in-imap-authorisation-log-string [SME: 12327]
@@ -105,6 +116,20 @@ See http://www.contribs.org/bugzilla/show_bug.cgi?id=819
 
 %prep
 %setup
+%patch0 -p1 
+%patch1 -p1
+%patch2 -p1
+%patch3 -p1
+%patch4 -p1
+%patch5 -p1
+%patch6 -p1
+%patch7 -p1
+%patch8 -p1
+%patch9 -p1
+%patch10 -p1
+%patch11 -p1
+%patch12 -p1
+%patch13 -p1
 
 %build
 perl createlinks
@@ -113,11 +138,19 @@ perl createlinks
 /bin/rm -rf $RPM_BUILD_ROOT
 (cd root ; /usr/bin/find . -depth -print | /bin/cpio -dump $RPM_BUILD_ROOT)
 chmod +x $RPM_BUILD_ROOT/usr/bin/runmailstats.sh
+# Define the placeholder and generate the current date and time
+now=$(date +"%Y-%m-%d %H:%M:%S")
+
+# Replace the placeholder in the Python program located at %{BUILDROOT}/usr/bin
+sed -i "s|__BUILD_DATE_TIME__|$now|" $RPM_BUILD_ROOT/usr/bin/mailstats.py
+
+
 /bin/rm -f %{name}-%{version}-filelist
-/sbin/e-smith/genfilelist $RPM_BUILD_ROOT > %{name}-%{version}-filelist
+/sbin/e-smith/genfilelist $RPM_BUILD_ROOT | grep -v "\.pyc" | grep -v "\.pyo"  > %{name}-%{version}-filelist
 
 %clean
 /bin/rm -rf $RPM_BUILD_ROOT
 
 %files -f %{name}-%{version}-filelist
 %defattr(-,root,root)
+

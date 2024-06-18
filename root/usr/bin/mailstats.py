@@ -6,16 +6,17 @@
 #
 # Mailstats
 #
-# optional arguments:
-#   -h, --help            show this help message and exit
-#   -d DATE, --date DATE  Specify a valid date (yyyy-mm-dd) for the analysis
-#   -ef EMAILFILE, --emailfile EMAILFILE
-#                       Save an html file of the email sent (y/N)
-#   -tf TEXTFILE, --textfile TEXTFILE
-#                       Save a txt file of the html page (y/N)
+# Optional arguments:
+#  -h, --help            show this help message and exit
+#  -d DATE, --date DATE  Specify a valid date (yyyy-mm-dd) for the analysis
+#  -ef EMAILFILE, --emailfile EMAILFILE
+#                        Save an html file of the email sent (y/N)
+#  -tf TEXTFILE, --textfile TEXTFILE
+#                        Save a txt file of the html page (y/N)
+#  --version             show program's version number and exit
 #
 #
-# Re-written in python from Mailstats.pl (Perl) to conform to SME11 / Postfix / qpsmtpd log formats
+# (June 2024 - bjr) Re-written in Python from Mailstats.pl (Perl) to conform to SME11 / Postfix / qpsmtpd log formats
 # and html output added
 #
 # Todo:
@@ -24,7 +25,7 @@
 # 4. Percent char causes sort to fail - look at adding it in the template
 # 5. Chase disparity in counts betweeen old mailstats and this
 # 6. Count emails delivered over ports 25/587/465 (SMTPS?)
-# 7. use tmp for txt file and copy to html dir if required.
+# 7. Incorporate the (rpm) build date into the version 
 # 
 # Future:
 # 1. Write summary line for each transaction to DB and link to it through cell in main table
@@ -54,6 +55,9 @@ import argparse
 import tempfile
 
 Mailstats_version = '1.2'
+build_date_time = "__BUILD_DATE_TIME__" 
+if build_date_time == "__BUILD_DATE_TIME__":
+    build_date_time = "Unknown"
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 data_file_path = script_dir+'/../..'    #back to the top
@@ -453,41 +457,41 @@ def render_sub_table(table_title,table_headers,found_values):
 	return rendered_html
 	
 	
-def get_spamassassin_version():
-    """
-    Get the installed SpamAssassin version.
+# def get_spamassassin_version():
+    # """
+    # Get the installed SpamAssassin version.
 
-    Returns:
-        str: Version number of SpamAssassin if installed, otherwise an error message.
-    """
-    try:
-        result = subprocess.run(['spamassassin', '--version'], capture_output=True, text=True)
-        if result.returncode == 0:
-            version_line = result.stdout.split('\n')[0]
-            version = version_line.split()[1]
-            return version
-        else:
-            return "SpamAssassin is not installed or an error occurred."
-    except Exception as e:
-        return f"Error: {e}"
+    # Returns:
+        # str: Version number of SpamAssassin if installed, otherwise an error message.
+    # """
+    # try:
+        # result = subprocess.run(['spamassassin', '--version'], capture_output=True, text=True)
+        # if result.returncode == 0:
+            # version_line = result.stdout.split('\n')[0]
+            # version = version_line.split()[1]
+            # return version
+        # else:
+            # return "SpamAssassin is not installed or an error occurred."
+    # except Exception as e:
+        # return f"Error: {e}"
 
-def get_clamav_version():
-    """
-    Get the installed ClamAV version.
+# def get_clamav_version():
+    # """
+    # Get the installed ClamAV version.
 
-    Returns:
-        str: Version number of ClamAV if installed, otherwise an error message.
-    """
-    try:
-        result = subprocess.run(['clamscan', '--version'], capture_output=True, text=True)
-        if result.returncode == 0:
-            version_line = result.stdout.split('\n')[0]
-            version = version_line.split()[1]
-            return version
-        else:
-            return "ClamAV is not installed or an error occurred."
-    except Exception as e:
-        return f"Error: {e}"
+    # Returns:
+        # str: Version number of ClamAV if installed, otherwise an error message.
+    # """
+    # try:
+        # result = subprocess.run(['clamscan', '--version'], capture_output=True, text=True)
+        # if result.returncode == 0:
+            # version_line = result.stdout.split('\n')[0]
+            # version = version_line.split()[1]
+            # return version
+        # else:
+            # return "ClamAV is not installed or an error occurred."
+    # except Exception as e:
+        # return f"Error: {e}"
         
 def read_html_from_file(filepath):
 	"""
@@ -646,7 +650,9 @@ if __name__ == "__main__":
 	parser.add_argument('-d', '--date', help='Specify a valid date (yyyy-mm-dd) for the analysis', default=formatted_yesterday)
 	parser.add_argument('-ef', '--emailfile', help='Save an html file of the email sent (y/N)', default='n')
 	parser.add_argument('-tf', '--textfile', help='Save a txt file of the html page (y/N)', default='n')
+	parser.add_argument('--version', action='version', version='%(prog)s '+Mailstats_version+" built on "+build_date_time)
 	args = parser.parse_args()
+
 	analysis_date = args.date
 	# and check its format is valid
 	try:
@@ -660,8 +666,19 @@ if __name__ == "__main__":
 	anaysis_date_obj = datetime.strptime(analysis_date, '%Y-%m-%d')
 	noemailfile = args.emailfile.lower()  == 'n'
 	notextfile = args.textfile.lower()  == 'n'
-
 	isThonny = is_running_under_thonny()
+	
+	hello_string = "Mailstats:"+Mailstats_version+' for '+DomainName+" at "+formatted_datetime+" for "+analysis_date
+	print(hello_string)
+	version_string = "Chameleon:"+chameleon_version+" Python:"+python_version
+	if isThonny:
+		version_string = version_string + "...under Thonny"
+	if args.version:
+		print(f"{Mailstats_version} {version_string}")
+		quit()
+
+	print(version_string)
+
 	#E-Smith Config DBs
 	if isThonny:
 		db_dir = "/home/brianr/SME11Build/GITFiles/smecontribs/smeserver-mailstats/"
@@ -691,8 +708,8 @@ if __name__ == "__main__":
 	EMailSMTPUser = get_value(ConfigDB,"mailstats","EmailUser")   					#None = default => no authenticatioon needed
 	EMailSMTPPassword = get_value(ConfigDB,"mailstats","EmailPassword")
 	
-	spamassassin_version = get_spamassassin_version()
-	clamav_version = get_clamav_version()
+	#spamassassin_version = get_spamassassin_version()
+	#clamav_version = get_clamav_version()
 	
 	FetchmailIP = '127.0.0.200';       	#Apparent Ip address of fetchmail deliveries
 	WebmailIP = '127.0.0.1';           	#Apparent Ip of Webmail sender
@@ -701,12 +718,6 @@ if __name__ == "__main__":
 	MAILMAN = "bounces";        		#sender when mailman sending when orig is localhost
 	DMARCDomain="dmarc"; 				#Pattern to recognised DMARC sent emails (this not very reliable, as the email address could be anything)
 	DMARCOkPattern="dmarc: pass";  		#Pattern to use to detect DMARC approval
-	hello_string = "Mailstats:"+Mailstats_version+' for '+DomainName+" at "+formatted_datetime+" for "+analysis_date
-	print(hello_string)
-	version_string = "Chameleon:"+chameleon_version+" Python:"+python_version
-	if isThonny:
-		version_string = version_string + "...under Thonny"
-	print(version_string)
 
 	num_hours = 25  # Represents hours from 0 to 23 - adds extra one for column totals and another for percentages
 
@@ -757,18 +768,18 @@ if __name__ == "__main__":
 	qpcodes_pattern = re.compile(r".*(\(.*\)).*'")
 	i = 0;
 	sorted_len= len(sorted_log_dict)
-	# Initial call to print the progress bar
 	#unless none to show
+	spamavg = 0;
+	spamqueuedcount = 0
+	hamcount = 0
+	hamavg = 0
+	rejectspamcount = 0
+	rejectspamavg = 0
+	DMARCSendCount = 0
+	totalexamined = 0
 	if sorted_len > 0:
-		spamavg = 0;
-		spamqueuedcount = 0
-		hamcount = 0
-		hamavg = 0
-		rejectspamcount = 0
-		rejectspamavg = 0
-		DMARCSendCount = 0
-		totalexamined = 0
 		if isThonny:
+			# Initial call to print the progress bar
 			print_progress_bar(0, sorted_len, prefix='Progress:', suffix='Complete', length=50)
 		for timestamp, data in sorted_log_dict.items():
 			i += 1
