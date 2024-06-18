@@ -432,16 +432,12 @@ def split_timestamp_and_data(log_entry: str) -> list:
 	return [timestamp, rest_of_data]
 	
 def render_sub_table(table_title,table_headers,found_values):
-	# NeedNOTE: also need to compute the percentages here.
-	# and sort it.
 	# Get the total
 	total_sum = sum(found_values.values())
 	# and add in list with second element the percentage
 	# Create a list of tuples with each tuple containing (key, value, percentage)
-	sub_result = [(key, value, f"{round(value / total_sum * 100, 2)}%") for key, value in found_values.items()]
-	sub_result.sort(key=lambda x: x[2], reverse=True)  # Sort by percentage in descending order
-
-		
+	sub_result = [(key, value, f"{round(value / total_sum * 100, 2)}") for key, value in found_values.items()]
+	sub_result.sort(key=lambda x: float(x[2]), reverse=True)  # Sort by percentage in descending order
 	sub_template_path = template_dir+'mailstats-sub-table.html.pt'
 	# Load the template
 	with open(sub_template_path, 'r') as template_file:
@@ -459,41 +455,6 @@ def render_sub_table(table_title,table_headers,found_values):
 	return rendered_html
 	
 	
-# def get_spamassassin_version():
-    # """
-    # Get the installed SpamAssassin version.
-
-    # Returns:
-        # str: Version number of SpamAssassin if installed, otherwise an error message.
-    # """
-    # try:
-        # result = subprocess.run(['spamassassin', '--version'], capture_output=True, text=True)
-        # if result.returncode == 0:
-            # version_line = result.stdout.split('\n')[0]
-            # version = version_line.split()[1]
-            # return version
-        # else:
-            # return "SpamAssassin is not installed or an error occurred."
-    # except Exception as e:
-        # return f"Error: {e}"
-
-# def get_clamav_version():
-    # """
-    # Get the installed ClamAV version.
-
-    # Returns:
-        # str: Version number of ClamAV if installed, otherwise an error message.
-    # """
-    # try:
-        # result = subprocess.run(['clamscan', '--version'], capture_output=True, text=True)
-        # if result.returncode == 0:
-            # version_line = result.stdout.split('\n')[0]
-            # version = version_line.split()[1]
-            # return version
-        # else:
-            # return "ClamAV is not installed or an error occurred."
-    # except Exception as e:
-        # return f"Error: {e}"
         
 def read_html_from_file(filepath):
 	"""
@@ -705,9 +666,6 @@ if __name__ == "__main__":
 	EMailSMTPUser = get_value(ConfigDB,"mailstats","EmailUser")   					#None = default => no authenticatioon needed
 	EMailSMTPPassword = get_value(ConfigDB,"mailstats","EmailPassword")
 	
-	#spamassassin_version = get_spamassassin_version()
-	#clamav_version = get_clamav_version()
-	
 	FetchmailIP = '127.0.0.200';       	#Apparent Ip address of fetchmail deliveries
 	WebmailIP = '127.0.0.1';           	#Apparent Ip of Webmail sender
 	localhost = 'localhost';           	#Apparent sender for webmail
@@ -783,17 +741,12 @@ if __name__ == "__main__":
 			totalexamined += 1
 			if isThonny:
 				print_progress_bar(i, sorted_len, prefix='Scanning for main table:', suffix='Complete', length=50)
-			#print(f"{i*100/len}%")
 			# Count of in which hour it falls      
-			#hour = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H')
 			# Parse the timestamp string into a datetime object
 			dt = timestamp
 			hour = dt.hour
 			# parse the data
-			#print(data)
-			parsed_data = parse_data(data)
-			#print(f"parsed_data['action']:{parsed_data['action']}\n")
-			
+			parsed_data = parse_data(data)		
 			# Increment Count in which headings it falls
 			#Hourly count and column total
 			columnCounts_2d[hour][Hour] += 1
