@@ -578,8 +578,8 @@ def get_heading():
 	tag_reject_info = f"Tag level: {SATagLevel}; Reject level: {SARejectLevel} {warnnoreject}"
 
 	# SMTP connection stats
-	smtp_stats = f"All External SMTP connections accepted: {totalexternalsmtpsessions}\n"\
-				 f"All Internal SMTP connections accepted: {totalinternalsmtpsessions}\n"\
+	smtp_stats = f"External SMTP connections accepted: {totalexternalsmtpsessions}\n"\
+				 f"Internal SMTP connections accepted: {totalinternalsmtpsessions}\n"\
 				 f"Emails per hour: {emailperhour:.1f}/hr\n"\
 				 f"Average spam score (accepted): {spamavg or 0:.2f}\n"\
 				 f"Average spam score (rejected): {rejectspamavg or 0:.2f}\n"\
