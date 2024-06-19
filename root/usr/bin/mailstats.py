@@ -26,6 +26,7 @@
 # 5. Chase disparity in counts betweeen old mailstats and this
 # 6. Count emails delivered over ports 25/587/465 (SMTPS?)
 # 7. Arrange that the spec file overwrites the date even if it has been overwritten before
+# 8. Allow mailstats pages to be public or private  (=> templating the fragment))
 # 
 # Future:
 # 1. Write summary line for each transaction to DB and link to it through cell in main table
@@ -579,8 +580,13 @@ def get_heading():
 
 	# SMTP connection stats
 	smtp_stats = f"External SMTP connections accepted: {totalexternalsmtpsessions}\n"\
-				 f"Internal SMTP connections accepted: {totalinternalsmtpsessions}\n"\
-				 f"Emails per hour: {emailperhour:.1f}/hr\n"\
+				 f"Internal SMTP connections accepted: {totalinternalsmtpsessions}"
+
+	if len(connection_type_counts)>0:
+		for connect_type in connection_type_counts.keys():
+			smtp_stats = smtp_stats + f"\nCount of {connection_type} connections:{connection_type_counts[connect_type]}"
+
+	smtp_stats = smtp_stats + f"\nEmails per hour: {emailperhour:.1f}/hr\n"\
 				 f"Average spam score (accepted): {spamavg or 0:.2f}\n"\
 				 f"Average spam score (rejected): {rejectspamavg or 0:.2f}\n"\
 				 f"Average ham score: {hamavg or 0:.2f}\n"\
@@ -851,6 +857,7 @@ if __name__ == "__main__":
 				#print(f"Found plugin {parsed_data['error-plugin']}")
 				if parsed_data['error-plugin']:
 					row = search_2d_list(parsed_data['error-plugin'],columnPlugin)
+					#print(row,parsed_data['error-plugin'])
 					if not row == -1:
 						#print(f"Found row: {row}")
 						columnCounts_2d[hour][row] += 1
@@ -862,16 +869,28 @@ if __name__ == "__main__":
 								found_viruses[match.group(1)] += 1
 							else:
 								found_viruses[parsed_data['action1']] += 1
-						elif parsed_data['error-plugin'] == 'naughty':
-							match = qpcodes_pattern.match(parsed_data['action1'])
-							if match:
-								rejReason = match.group(1)
-								found_qpcodes[parsed_data['error-plugin']+"-"+rejReason] += 1
-							else:
-								found_qpcodes['Unknown'] += 1
+					elif parsed_data['error-plugin'].strip() == 'naughty':
+						#print(f"Found naughty {parsed_data['error-msg']}")
+						if parsed_data['error-msg'].startswith("(dnsbl)"):
+							#print("Found dnsbl")
+							columnCounts_2d[hour][RBLDNS]+= 1
+							columnCounts_2d[ColTotals][RBLDNS]+= 1
+						elif parsed_data['error-msg'].startswith("(karma)"):
+							columnCounts_2d[hour][KARMA] += 1
+							columnCounts_2d[ColTotals][KARMA]+= 1
+						elif parsed_data['error-msg'].startswith("(helo)"):
+							columnCounts_2d[hour][RBLDNS] += 1
+							columnCounts_2d[ColTotals][RBLDNS]+= 1
+#								match = qpcodes_pattern.match(parsed_data['action1'])
+#								if match:
+#									rejReason = match.group(1)
+#									found_qpcodes[parsed_data['error-plugin']+"-"+rejReason] += 1
 						else:
-							found_qpcodes[parsed_data['action1']] += 1
-		print() #seperate the [progress bar]
+							found_qpcodes['Unknown'] += 1
+					else:
+						found_qpcodes[parsed_data['action1']] += 1
+			if isThonny:
+				print() #seperate the [progress bar]
 	# Compute percentages
 	total_Count  = columnCounts_2d[ColTotals][TOTALS]
 	#Column of percentages
@@ -907,6 +926,7 @@ if __name__ == "__main__":
 	geoip_pattern = re.compile(r".*check_badcountries: GeoIP Country: (.*)")
 	dmarc_pattern = re.compile(r".*dmarc: pass")
 	helo_pattern = re.compile(r".*Accepted connection.*?from (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) \/ ([\w.-]+)")
+	connect_type_pattern = re.compile(r".*connect via (.*)")
 	total_countries = 0
 	DMARCOkCount = 0
 	totalinternalsmtpsessions = 0
@@ -915,6 +935,7 @@ if __name__ == "__main__":
 	i = 0
 	j = 0
 	log_len = len(log_entries)
+	connection_type_counts = defaultdict(int)
 	if log_len > 0:
 		if isThonny:
 			print_progress_bar(0, log_len, prefix='Progress:', suffix='Complete', length=50)
@@ -948,7 +969,14 @@ if __name__ == "__main__":
 			if match:
 				DMARCOkCount += 1
 				continue
-			
+
+			#Pull out type of connection
+			match = connect_type_pattern.match(data[1])
+			if match:
+				connection_type = match.group(1)
+				connection_type_counts[connection_type] += 1
+				continue
+
 
 	#Now apply the results to the chameleon template - main table
 	# Path to the template file
