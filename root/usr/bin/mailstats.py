@@ -261,13 +261,13 @@ def parse_data(data):
 	fields2 = parts[1].split('\t') if len(parts) > 1 else []
 	# then merge them
 	fields = fields1 + fields2
-#    if fields[8] != 'queued':
-#    i = 0
-#    print(f"len:{len(fields)}")
-#    for part in fields:
-#        print(f"{i}: {part}")
-#        i  = i +1
-#    quit()
+#	if fields[4] == 'localhost':
+#		i = 0
+#		print(f"len:{len(fields)}")
+#		for part in fields:
+#			print(f"{i}: {part}")
+#			i  = i +1
+#		quit()
 	# and mapping:
 	try:
 		return_dict = {
@@ -726,7 +726,7 @@ if __name__ == "__main__":
 	found_viruses = defaultdict(int)
 	
 	found_qpcodes = defaultdict(int)
-	qpcodes_pattern = re.compile(r".*(\(.*\)).*'")
+	qpcodes_pattern = re.compile(r"(\(.*\)).*'")
 	i = 0;
 	sorted_len= len(sorted_log_dict)
 	#unless none to show
@@ -761,6 +761,60 @@ if __name__ == "__main__":
 			columnCounts_2d[hour][TOTALS] += 1
 			#Total totals
 			columnCounts_2d[ColTotals][TOTALS] += 1
+			
+			# first spot the fetchmail and local deliveries.
+			#Local send
+			if DomainName in parsed_data['sendurl']:
+				columnCounts_2d[hour][Local] += 1
+				columnCounts_2d[ColTotals][Local] += 1
+			#Relay or webmail
+			elif not is_private_ip(parsed_data['ip']) and is_private_ip(parsed_data['sendurl1']) and parsed_data['action1'] == 'queued':
+				#Relay
+				columnCounts_2d[hour][Relay] += 1
+				columnCounts_2d[ColTotals][Relay] += 1
+			elif WebmailIP in parsed_data['sendurl1'] and not is_private_ip(parsed_data['ip']):
+				#webmail
+				columnCounts_2d[hour][WebMail] += 1
+				columnCounts_2d[ColTotals][WebMail] += 1
+				
+			elif localhost in parsed_data['sendurl']:
+				# but not if it comes from fetchmail
+				if not FETCHMAIL in parsed_data['sendurl1']:
+					# might still be from mailman here
+					if MAILMAN in parsed_data['sendurl1']:
+						#$mailmansendcount++;
+						#$localsendtotal++;
+						columnCounts_2d[hour][MailMan] += 1
+						columnCounts_2d[ColTotals][MailMan] += 1
+						#$counts{$abshour}{$CATMAILMAN}++;
+						#$localflag = 1;
+					else:
+						#Or sent to the DMARC server
+						#check for email address in $DMARC_Report_emails string
+						#my $logemail = $log_items[4];
+						if DMARCDomain in parsed_data['from-email']: #(index($DMARC_Report_emails,$logemail)>=0) or 
+							#$localsendtotal++;
+							DMARCSendCount += 1
+							#localflag = 1;
+						else:
+							# ignore incoming localhost spoofs
+							if not 'msg denied before queued' in parsed_data['error-msg']:
+								#Webmail
+								#$localflag = 1;
+								#$WebMailsendtotal++;
+								columnCounts_2d[hour][WebMail] += 1
+								columnCounts_2d[ColTotals][WebMail] += 1
+								#$WebMailflag = 1;
+				else:
+					#$localflag = 1;
+					#$WebMailsendtotal++;
+					#$WebMailflag = 1;
+					columnCounts_2d[hour][WebMail] += 1
+					columnCounts_2d[ColTotals][WebMail] += 1
+
+
+
+
 			#Queued email
 			if parsed_data['action'] == '(queue)':
 				columnCounts_2d[hour][Ham] += 1
@@ -801,57 +855,29 @@ if __name__ == "__main__":
 							spamavg += score
 							spamqueuedcount += 1
 				
-				#Local send
-				elif DomainName in parsed_data['sendurl']:
-					columnCounts_2d[hour][Local] += 1
-					columnCounts_2d[ColTotals][Local] += 1
 
-			#Relay or webmail
-			elif not is_private_ip(parsed_data['ip']) and is_private_ip(parsed_data['sendurl1']) and parsed_data['action1'] == 'queued':
-				#Relay
-				if parsed_data['action1'] == 'queued':
-					columnCounts_2d[hour][Relay] += 1
-					columnCounts_2d[ColTotals][Relay] += 1
-			elif WebmailIP in parsed_data['sendurl1'] and not is_private_ip(parsed_data['ip']):
-				#webmail
-				columnCounts_2d[hour][WebMail] += 1
-				columnCounts_2d[ColTotals][WebMail] += 1
-				
-			elif localhost in parsed_data['sendurl']:
-				# but not if it comes from fetchmail
-				if not FETCHMAIL in parsed_data['sendurl1']:
-					# might still be from mailman here
-					if MAILMAN in parsed_data['sendurl1']:
-						#$mailmansendcount++;
-						#$localsendtotal++;
-						columnCounts_2d[hour][MailMan] += 1
-						columnCounts_2d[ColTotals][MailMan] += 1
-						#$counts{$abshour}{$CATMAILMAN}++;
-						#$localflag = 1;
-					else:
-						#Or sent to the DMARC server
-						#check for email address in $DMARC_Report_emails string
-						#my $logemail = $log_items[4];
-						if DMARCDomain in parsed_data['from-email']: #(index($DMARC_Report_emails,$logemail)>=0) or 
-							#$localsendtotal++;
-							DMARCSendCount += 1
-							#localflag = 1;
-						else:
-							# ignore incoming localhost spoofs
-							if not 'msg denied before queued' in parsed_data['error-msg']:
-								#Webmail
-								#$localflag = 1;
-								#$WebMailsendtotal++;
-								columnCounts_2d[hour][WebMail] += 1
-								columnCounts_2d[ColTotals][WebMail] += 1
-								#$WebMailflag = 1;
+					
+			# Count the qpsmtpd codes
+			if parsed_data['error-plugin'].strip() == 'naughty':
+				#print(f"Found naughty {parsed_data['error-msg']}")
+				if parsed_data['error-msg'].startswith("(dnsbl)"):
+					#print("Found dnsbl")
+					columnCounts_2d[hour][RBLDNS]+= 1
+					columnCounts_2d[ColTotals][RBLDNS]+= 1
+				elif parsed_data['error-msg'].startswith("(karma)"):
+					columnCounts_2d[hour][KARMA] += 1
+					columnCounts_2d[ColTotals][KARMA]+= 1
+				elif parsed_data['error-msg'].startswith("(helo)"):
+					columnCounts_2d[hour][RBLDNS] += 1
+					columnCounts_2d[ColTotals][RBLDNS]+= 1
+			else:
+				match = qpcodes_pattern.match(parsed_data['action1'])
+				if match:
+					rejReason = match.group(1)
+					found_qpcodes[parsed_data['error-plugin']+"-"+rejReason] += 1
 				else:
-					#$localflag = 1;
-					#$WebMailsendtotal++;
-					#$WebMailflag = 1;
-					columnCounts_2d[hour][WebMail] += 1
-					columnCounts_2d[ColTotals][WebMail] += 1
-				
+					found_qpcodes[parsed_data['action1']] += 1
+			
 			#Now increment the column which the plugin name indicates
 			if parsed_data['action'] == '(deny)' and parsed_data['error-plugin']:
 				#print(f"Found plugin {parsed_data['error-plugin']}")
@@ -869,24 +895,6 @@ if __name__ == "__main__":
 								found_viruses[match.group(1)] += 1
 							else:
 								found_viruses[parsed_data['action1']] += 1
-					elif parsed_data['error-plugin'].strip() == 'naughty':
-						#print(f"Found naughty {parsed_data['error-msg']}")
-						if parsed_data['error-msg'].startswith("(dnsbl)"):
-							#print("Found dnsbl")
-							columnCounts_2d[hour][RBLDNS]+= 1
-							columnCounts_2d[ColTotals][RBLDNS]+= 1
-						elif parsed_data['error-msg'].startswith("(karma)"):
-							columnCounts_2d[hour][KARMA] += 1
-							columnCounts_2d[ColTotals][KARMA]+= 1
-						elif parsed_data['error-msg'].startswith("(helo)"):
-							columnCounts_2d[hour][RBLDNS] += 1
-							columnCounts_2d[ColTotals][RBLDNS]+= 1
-#								match = qpcodes_pattern.match(parsed_data['action1'])
-#								if match:
-#									rejReason = match.group(1)
-#									found_qpcodes[parsed_data['error-plugin']+"-"+rejReason] += 1
-						else:
-							found_qpcodes['Unknown'] += 1
 					else:
 						found_qpcodes[parsed_data['action1']] += 1
 			if isThonny:
