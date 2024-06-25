@@ -432,12 +432,21 @@ def split_timestamp_and_data(log_entry: str) -> list:
 	rest_of_data = parts[2]
 	return [timestamp, rest_of_data]
 	
-def render_sub_table(table_title,table_headers,found_values):
+def render_sub_table(table_title,table_headers,found_values,get_character=None):
 	# Get the total
 	total_sum = sum(found_values.values())
 	# and add in list with second element the percentage
 	# Create a list of tuples with each tuple containing (key, value, percentage)
-	sub_result = [(key, value, f"{round(value / total_sum * 100, 2)}") for key, value in found_values.items()]
+	if get_character:
+		sub_result = [(key, value, 
+						f"{round(value / total_sum * 100, 2)}",
+						f"{get_character(key)}") for key, value in found_values.items()
+						]
+	else:
+		sub_result = [(key, value, 
+						f"{round(value / total_sum * 100, 2)}") for key, value in found_values.items()
+						]
+		
 	sub_result.sort(key=lambda x: float(x[2]), reverse=True)  # Sort by percentage in descending order
 	sub_template_path = template_dir+'mailstats-sub-table.html.pt'
 	# Load the template
@@ -455,6 +464,11 @@ def render_sub_table(table_title,table_headers,found_values):
 		raise ValueError(f"{table_title}: A chameleon controller template error occurred: {e}")
 	return rendered_html
 	
+def get_character_in_reject_list(code):
+	if code in BadCountries:
+		return "*"
+	else:
+		return ""
 	
         
 def read_html_from_file(filepath):
@@ -671,6 +685,22 @@ if __name__ == "__main__":
 	EmailPort = int(get_value(ConfigDB,"mailstats","EmailPort","25"))
 	EMailSMTPUser = get_value(ConfigDB,"mailstats","EmailUser")   					#None = default => no authenticatioon needed
 	EMailSMTPPassword = get_value(ConfigDB,"mailstats","EmailPassword")
+	
+	BadCountries = get_value(ConfigDB,"qpsmtpd","BadCountries")
+	
+	# Not sure we need these...
+	# if (ConfigDB,"qpsmtpd","RHSBL").lower() == 'enabled':
+		# RBLList = get_value(ConfigDB,"qpsmtpd","RBLList")
+	# else:
+		# RBLList = ""
+	# if (ConfigDB,"qpsmtpd","RBLList").lower() == 'enabled':
+		# SBLLIst = get_value(ConfigDB,"qpsmtpd","SBLLIst")
+	# else:
+		# RBLList = ""
+	# if (ConfigDB,"qpsmtpd","RBLList").lower() == 'enabled':
+		# UBLList = get_value(ConfigDB,"qpsmtpd","UBLLIst")
+	# else:
+		# RBLList = ""
 	
 	FetchmailIP = '127.0.0.200';       	#Apparent Ip address of fetchmail deliveries
 	WebmailIP = '127.0.0.1';           	#Apparent Ip of Webmail sender
@@ -1007,9 +1037,11 @@ if __name__ == "__main__":
 	# Add in the header information
 	rendered_html = get_heading()
 	total_html =  insert_string_after(total_html,rendered_html, "<!---Add in header information here -->")
+
 	#add in the subservient tables..
+
 	#qpsmtd codes
-	qpsmtpd_headers = ["Code",'Count','Percent','Reason']
+	qpsmtpd_headers = ["Reason",'Count','Percent']
 	qpsmtpd_title = 'Qpsmtpd codes league table:'
 	rendered_html = render_sub_table(qpsmtpd_title,qpsmtpd_headers,found_qpcodes)
 	# Add it to the total 
@@ -1018,7 +1050,7 @@ if __name__ == "__main__":
 	#Geoip Country codes
 	geoip_headers  = ['Country','Count','Percent','Rejected?']
 	geoip_title = 'Geoip results:'
-	rendered_html = render_sub_table(geoip_title,geoip_headers,found_countries)
+	rendered_html = render_sub_table(geoip_title,geoip_headers,found_countries,get_character_in_reject_list)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
 	
