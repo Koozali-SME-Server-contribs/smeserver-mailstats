@@ -534,7 +534,7 @@ LINE: while (<>) {
 			$counts{$abshour}{$CATRELAY}++;
 		}
 
-		elsif (($log_items[2] =~ m/$WebmailIP/) and (!test_for_private_ip($log_items[0]))) {
+	elsif (($log_items[2] =~ m/$WebmailIP/) and (!test_for_private_ip($log_items[0]))) {
 			#Webmail
 			$localflag = 1;
 			$WebMailsendtotal++;
@@ -556,33 +556,33 @@ LINE: while (<>) {
                 $localflag = 1;
             }
             else {
-								#Or sent to the DMARC server
-								#check for email address in $DMARC_Report_emails string
-								my $logemail = $log_items[4];
-								if ((index($DMARC_Report_emails,$logemail)>=0) or ($logemail =~ m/$DMARCDomain/)){
-									$localsendtotal++;
-									$DMARCSendCount++;
-									$localflag = 1;
-								}
-								else {
-									if (exists $log_items[8]){
-										# ignore incoming localhost spoofs
-										if ( $log_items[8] =~ m/msg denied before queued/ ) { }
-										else {
-												#Webmail
-												$localflag = 1;
-												$WebMailsendtotal++;
-												$counts{$abshour}{$CATWEBMAIL}++;
-												$WebMailflag = 1;
-										}
-									}	
-									else {
-										$localflag = 1;
-										$WebMailsendtotal++;
-										$counts{$abshour}{$CATWEBMAIL}++;
-										$WebMailflag = 1;
-									}
-								}
+				#Or sent to the DMARC server
+				#check for email address in $DMARC_Report_emails string
+				my $logemail = $log_items[4];
+				if ((index($DMARC_Report_emails,$logemail)>=0) or ($logemail =~ m/$DMARCDomain/)){
+					$localsendtotal++;
+					$DMARCSendCount++;
+					$localflag = 1;
+				}
+				else {
+					if (exists $log_items[8]){
+						# ignore incoming localhost spoofs
+						if ( $log_items[8] =~ m/msg denied before queued/ ) { }
+						else {
+								#Webmail
+								$localflag = 1;
+								$WebMailsendtotal++;
+								$counts{$abshour}{$CATWEBMAIL}++;
+								$WebMailflag = 1;
+						}
+					}	
+					else {
+						$localflag = 1;
+						$WebMailsendtotal++;
+						$counts{$abshour}{$CATWEBMAIL}++;
+						$WebMailflag = 1;
+					}
+				}
             }
         }
     }
