@@ -21,22 +21,31 @@
 #
 # Todo:
 # 2  Other stats
-# 3. Extra bits for sub tables
-# 4. Percent char causes sort to fail - look at adding it in the template
-# 5. Chase disparity in counts betweeen old mailstats and this
+# 3. Extra bits for sub tables - DONE
+# 4. Percent char causes sort to fail - look at adding it in the template - DONE
+# 5. Chase disparity in counts betweeen old mailstats and this - Some of it DONE
 # 6. Count emails delivered over ports 25/587/465 (SMTPS?)
 # 7. Arrange that the spec file overwrites the date even if it has been overwritten before
 # 8. Allow mailstats pages to be public or private  (=> templating the fragment))
 # 
 # Future:
 # 1. Write summary line for each transaction to DB and link to it through cell in main table
+# 2. Make DB password something more obscure.
+# 3. Prune the DB according to parameter 
+# 
+# Even more Future (if ever))
 # 2. Link each summary line through DB to actual transaction lines
 #
 # Centos7:
 # yum install python3-chameleon --enablerepo=epel
 # yum install html2text --enablerepo=epel
+# yum install mysql-connector-python --enablerepo=epel (not sure if this is required as well the pip3))
+# pip3 install mysql-connector
 #
-# Rocky8:
+# Rocky8: (probably - not yet checked this)
+#
+# dnf install python3-chameleon --enablerepo=epel
+# dnf install html2text --enablerepo=epel
 #
 #
 from datetime import datetime, timedelta
@@ -54,6 +63,7 @@ from email.mime.text import MIMEText
 import codecs
 import argparse
 import tempfile
+import mysql.connector
 
 Mailstats_version = '1.2'
 build_date_time = "2024-06-18 12:03:40OURCE" 
@@ -94,6 +104,27 @@ PERCENT = TOTALS + 1
 ColTotals = 24
 ColPercent = 25
 
+import mysql.connector
+import json
+
+def save_summaries_to_db(date_str, hour, parsed_data):
+
+    # Convert parsed_data to JSON string
+    json_data = json.dumps(parsed_data)
+
+    # Insert the record
+    insert_query = """
+    INSERT INTO SummaryLogs (Date, Hour, logData)
+    VALUES (%s, %s, %s)
+    """
+    
+    try:
+        cursor.execute(insert_query, (date_str, hour, json_data))
+        conn.commit()
+    except mysql.connector.Error as err:
+        print(f"DB Error {date_str} {hour} : {err}")
+        conn.rollback()
+        
 def is_running_under_thonny():
     # Check for the 'THONNY_USER_DIR' environment variable
     return 'THONNY_USER_DIR' in os.environ
@@ -291,7 +322,9 @@ def parse_data(data):
 		}
 	except:
 		#print(f"error:len:{len(fields)}")
-		return_dict = {}    
+		return_dict = {}  
+	#print(return_dict) 
+	#quit() 
 	return return_dict
 
 def count_entries_by_hour(log_entries):
@@ -634,6 +667,8 @@ if __name__ == "__main__":
 	parser.add_argument('-ef', '--emailfile', help='Save an html file of the email sent (y/N)', default='n')
 	parser.add_argument('-tf', '--textfile', help='Save a txt file of the html page (y/N)', default='n')
 	parser.add_argument('--version', action='version', version='%(prog)s '+Mailstats_version+" built on "+build_date_time)
+	parser.add_argument('-db', '--dbsave', help='Force save of summary logs in DB (y/N)', default='n')
+	
 	args = parser.parse_args()
 
 	analysis_date = args.date
@@ -648,6 +683,7 @@ if __name__ == "__main__":
 	noemailfile = args.emailfile.lower()  == 'n'
 	notextfile = args.textfile.lower()  == 'n'
 	isThonny = is_running_under_thonny()
+	forceDbSave = args.dbsave.lower()  == 'y'
 	
 	#E-Smith Config DBs
 	if isThonny:
@@ -687,6 +723,54 @@ if __name__ == "__main__":
 	EMailSMTPPassword = get_value(ConfigDB,"mailstats","EmailPassword")
 	
 	BadCountries = get_value(ConfigDB,"qpsmtpd","BadCountries")
+	
+	# Db save control
+	saveData = get_value(ConfigDB,"mailstats","SaveDataToMySQL","no") == 'yes' or forceDbSave
+	if saveData:
+		DBName = "mailstats";
+		DBHost = get_value(ConfigDB,'mailstats','DBHost',"localhost")
+		DBPort = get_value(ConfigDB,'mailstats','DBPort',"3306")
+		DBName = 'mailstats'
+		DBPassw = 'mailstats'
+		DBUser = 'mailstats'
+		UnixSocket = "/var/lib/mysql/mysql.sock" 
+		# see if the DB exists
+		# Try to Establish a database connection
+		try:
+			conn = mysql.connector.connect(
+				host=DBHost,
+				user=DBUser,
+				password=DBPassw,
+				database=DBName,
+				port=DBPort,
+				unix_socket=UnixSocket
+			)
+			cursor = conn.cursor()
+			# Create table if it doesn't exist
+			cursor.execute("""
+			CREATE TABLE IF NOT EXISTS SummaryLogs (
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				Date DATE,
+				Hour INT,
+				logData TEXT
+			)
+			""")
+			# and prune the DB here if needed.
+			# Delete existing records for the given date
+			delete_query = """
+			DELETE FROM SummaryLogs
+			WHERE Date = %s
+			"""
+			cursor.execute(delete_query, (analysis_date))
+			# Get the number of records deleted
+			rows_deleted = cursor.rowcount
+			print(rows_deleted)
+			#quit()
+			if rows_deleted > 0:
+				print(f"Deleted {rows_deleted} rows for {analysis_date} ")
+		except mysql.connector.Error as e:
+			print(f"Unable to connect to {DBName} on {DBHost} port {DBPort} error ({e}) ")
+			saveData = False
 	
 	# Not sure we need these...
 	# if (ConfigDB,"qpsmtpd","RHSBL").lower() == 'enabled':
@@ -782,7 +866,10 @@ if __name__ == "__main__":
 			dt = timestamp
 			hour = dt.hour
 			# parse the data
-			parsed_data = parse_data(data)		
+			parsed_data = parse_data(data)
+			# Save the data here if necessary
+			if saveData:
+				save_summaries_to_db(anaysis_date_obj.strftime('%Y-%m-%d'),hour,parsed_data)
 			# Increment Count in which headings it falls
 			#Hourly count and column total
 			columnCounts_2d[hour][Hour] += 1
@@ -1015,7 +1102,8 @@ if __name__ == "__main__":
 				connection_type_counts[connection_type] += 1
 				continue
 
-
+	#print(columnCounts_2d)
+	#quit()
 	#Now apply the results to the chameleon template - main table
 	# Path to the template file
 	template_path = template_dir+'mailstats.html.pt'
@@ -1025,7 +1113,7 @@ if __name__ == "__main__":
 	# Create a Chameleon template instance
 	try:
 		template = PageTemplate(template_content)
-	# Render the template with the 2D array data and column headers
+		# Render the template with the 2D array data and column headers
 		try:
 			rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, reporting_date=analysis_date, title=hello_string, version=version_string)
 		except Exception as e:
@@ -1053,6 +1141,11 @@ if __name__ == "__main__":
 	rendered_html = render_sub_table(geoip_title,geoip_headers,found_countries,get_character_in_reject_list)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
+	
+	if saveData:
+		# Close the connection
+		cursor.close()
+		conn.close()
 	
 	#Add in navigation html - next/previous/see in browser
 	day_format = "%Y-%m-%d"
