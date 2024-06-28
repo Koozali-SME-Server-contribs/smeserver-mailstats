@@ -757,17 +757,20 @@ if __name__ == "__main__":
 			""")
 			# and prune the DB here if needed.
 			# Delete existing records for the given date
-			delete_query = """
-			DELETE FROM SummaryLogs
-			WHERE Date = %s
-			"""
-			cursor.execute(delete_query, (analysis_date))
-			# Get the number of records deleted
-			rows_deleted = cursor.rowcount
-			print(rows_deleted)
-			#quit()
-			if rows_deleted > 0:
-				print(f"Deleted {rows_deleted} rows for {analysis_date} ")
+			try:
+				delete_query = """
+				DELETE FROM SummaryLogs
+				WHERE Date = %s
+				"""
+				cursor.execute(delete_query, (analysis_date))
+				# Get the number of records deleted
+				rows_deleted = cursor.rowcount
+				print(rows_deleted)
+				#quit()
+				if rows_deleted > 0:
+					print(f"Deleted {rows_deleted} rows for {analysis_date} ")
+			except mysql.connector.Error as e:
+				print(f"SQL Delete failed ({delete_query}) ({e}) ")
 		except mysql.connector.Error as e:
 			print(f"Unable to connect to {DBName} on {DBHost} port {DBPort} error ({e}) ")
 			saveData = False
