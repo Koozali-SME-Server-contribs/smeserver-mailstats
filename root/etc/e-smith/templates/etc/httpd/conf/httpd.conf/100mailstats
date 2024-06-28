@@ -6,6 +6,9 @@
         Options Indexes FollowSymLinks
         AllowOverride None
         Require all granted
+        <FilesMatch .php$>
+			SetHandler "proxy:unix:/var/run/php-fpm/php74.sock|fcgi://localhost"
+		</FilesMatch>
     </Directory>
 
     <Directory "/opt/mailstats/css">
