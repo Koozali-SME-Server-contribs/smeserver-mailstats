@@ -47,7 +47,7 @@
     <!---Add in header information here -->
     <br />
     <br />
-	<table style="border-collapse:collapse;">
+	<table style="border-collapse:collapse;width:98%">
 		<thead>
 			<tr>
 				<th>Date/Time</th>
@@ -66,7 +66,9 @@
     <!---Add in sub tables here -->
     <br />
     <footer>${version}</footer>
+    
 	<script>window.onload = function(){doNavs();} </script> 
+	
 	<p class="cssvalid">
 		<a href="http://jigsaw.w3.org/css-validator/check/referer">
 			<img style="border:0;width:88px;height:31px"
