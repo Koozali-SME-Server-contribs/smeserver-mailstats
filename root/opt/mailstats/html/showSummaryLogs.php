@@ -8,8 +8,8 @@ $dbname = "mailstats";
 // Default date to yesterday
 $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d', strtotime('-1 day'));
 
-// Default hour to 12
-$hour = isset($_GET['hour']) ? $_GET['hour'] : 12;
+// Default hour to 99 (means all the hours)
+$hour = isset($_GET['hour']) ? $_GET['hour'] : 99;
 
 // Create connection
 $conn = new mysqli($servername, $username, $password, $dbname);
@@ -20,9 +20,15 @@ if ($conn->connect_error) {
 }
 
 // Prepare and execute the query
-$sql = "SELECT * FROM SummaryLogs WHERE Date = ? AND Hour = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("si", $date, $hour);
+if ($hour == 99){
+	$sql = "SELECT * FROM SummaryLogs WHERE Date = ?";
+	$stmt = $conn->prepare($sql);
+	$stmt->bind_param("s", $date);
+} else {
+	$sql = "SELECT * FROM SummaryLogs WHERE Date = ? AND Hour = ?";
+	$stmt = $conn->prepare($sql);
+	$stmt->bind_param("si", $date, $hour);
+}
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -82,7 +88,7 @@ function generateLogDataTable($logData) {
     </style>
 </head>
 <body>
-    <h1>Summary Logs for Date: <?= htmlspecialchars($date) ?> and Hour: <?= htmlspecialchars($hour) ?></h1>
+    <h1>Summary Logs for Date: <?= htmlspecialchars($date) ?> <?= $hour == 99 ? 'for All Hours' : 'and Hour: ' . htmlspecialchars($hour) ?></h1>
     <table>
         <thead>
             <tr>
