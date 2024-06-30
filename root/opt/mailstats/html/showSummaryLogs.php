@@ -31,6 +31,7 @@ if ($hour == 99){
 }
 $stmt->execute();
 $result = $stmt->get_result();
+$result_count = $result->num_rows;
 
 function generateLogDataTable($logData) {
     $data = json_decode($logData, true);
@@ -73,7 +74,7 @@ function generateLogDataTable($logData) {
     $keys = array_keys($mergedData);
     $values = array_values($mergedData);
     
-    $output = '<table class="stripes" style="border-collapse: collapse; width:80%;overflow-x:auto; margin:2%"><tbody>';
+    $output = '<table class="stripes" style="border-collapse: collapse; width:95%;overflow-x:auto; margin:2%"><tbody>';
 
     // Divide keys and values into sets of 6
     $chunks = array_chunk($keys, 6);
@@ -124,6 +125,7 @@ function generateLogDataTable($logData) {
 <body>
 	<div style="width:100%;overflow-x:auto;font-size:0.726cqw">"
     <h1>Summary Logs for Date: <?= htmlspecialchars($date) ?> <?= $hour == 99 ? 'for All Hours' : 'and Hour: ' . htmlspecialchars($hour) ?></h1>
+    <h3>Found <?= $result_count ?> records.</h3>
     <table style="border-collapse:collapse;width:98%">
         <thead>
             <tr>

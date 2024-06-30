@@ -59,8 +59,15 @@
 				<td tal:condition="repeat.row.index == 24" tal:attributes="class python:'col-total'" tal:content="'TOTALS'">Totals</td>
 				<td tal:condition="repeat.row.index == 25" tal:attributes="class python:'col-percent'" tal:content="'PERCENT'">Percent</td>
 				<td tal:condition="repeat.row.index < 24" tal:content="string:${reporting_date}, ${repeat.row.index}">Hour</td>
-				<td tal:repeat="cell row" tal:attributes="class python: 'col-' + str(repeat.cell.index)" tal:content="cell">Cell</td>
-			</tr>
+				<td tal:repeat="cell row" tal:attributes="class python: 'col-' + str(repeat.cell.index)">
+					<!-- Exclude the PERCENT column from generating links and apply the logic to rows 0 to 23 -->
+					<tal:condition tal:condition="repeat.row.index >= 0 and repeat.row.index < 24 and repeat.cell.index != 16">
+						<a tal:attributes="href string:./showSummaryLogs.php?hour=${repeat.row.index}" tal:content="cell">Cell</a>
+					</tal:condition>
+					<!-- For PERCENT column or other rows, just display the cell content -->
+					<tal:condition tal:condition="not (repeat.row.index >= 0 and repeat.row.index < 24 and repeat.cell.index != 16)" tal:content="cell">Cell</tal:condition>
+				</td>
+        </tr>
 		</tbody>
 	</table>
     <!---Add in sub tables here -->
