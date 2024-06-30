@@ -122,7 +122,7 @@ function generateLogDataTable($logData) {
 -->
 </head>
 <body>
-	<div style="width:100%;overflow-x:auto;font-size:1cqw">"
+	<div style="width:100%;overflow-x:auto;font-size:0.726cqw">"
     <h1>Summary Logs for Date: <?= htmlspecialchars($date) ?> <?= $hour == 99 ? 'for All Hours' : 'and Hour: ' . htmlspecialchars($hour) ?></h1>
     <table style="border-collapse:collapse;width:98%">
         <thead>
