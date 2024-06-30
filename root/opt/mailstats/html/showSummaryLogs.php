@@ -38,13 +38,45 @@ function generateLogDataTable($logData) {
         return "Invalid JSON data";
     }
     
-    $keys = array_keys($data);
-    $values = array_values($data);
+    //// Remove entries with the key "logterse"
+    //if (isset($data['logterse'])) {
+        //unset($data['logterse']);
+    //}
+
+    // Remove entries with the key "logterse" and remove entries with empty values
+    foreach ($data as $key => $value) {
+        if ($key === 'logterse' || empty($value)) {
+            unset($data[$key]);
+        }
+    }
+
+    // Handle adjacent duplicates by merging keys
+    $mergedData = [];
+    $previousValue = null;
+    foreach ($data as $key => $value) {
+        if ($value === $previousValue) {
+            // Merge the current key with the previous key
+            end($mergedData);
+            $lastKey = key($mergedData);
+            $newKey = "$lastKey/$key";
+            $mergedData[$newKey] = $value;
+            // Remove the old entry
+            unset($mergedData[$lastKey]);
+        } else {
+            // Otherwise, add a new entry
+            $mergedData[$key] = $value;
+        }
+        $previousValue = $value;
+    }
+
+        
+    $keys = array_keys($mergedData);
+    $values = array_values($mergedData);
     
-    $output = '<table border="1" style="border-collapse: collapse; width: 41%;overflow-x:auto;font-size:1cqw"><tbody>';
+    $output = '<table class="stripes" style="border-collapse: collapse; width:80%;overflow-x:auto; margin:2%"><tbody>';
 
     // Divide keys and values into sets of 6
-    $chunks = array_chunk($keys, 7);
+    $chunks = array_chunk($keys, 6);
     foreach ($chunks as $chunkIndex => $chunk) {
         if ($chunkIndex > 0) {
             // Add spacing between different sets
@@ -57,7 +89,7 @@ function generateLogDataTable($logData) {
         }
         $output .= '</tr><tr>';
         foreach ($chunk as $i => $key) {
-            $output .= '<td>' . htmlspecialchars($values[$chunkIndex * 7 + $i]) . '</td>';
+            $output .= '<td>' . htmlspecialchars($values[$chunkIndex * 6+ $i]) . '</td>';
         }
         $output .= '</tr>';
     }
@@ -72,24 +104,27 @@ function generateLogDataTable($logData) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+   	<link rel='stylesheet' type='text/css' href='css/mailstats.css' />
     <title>Summary Logs</title>
-    <style>
+<!--    <style>
         table {
-            width: 100%;
-            border-collapse: collapse;
+            xxwidth: 100%;
+            xxborder-collapse: collapse;
         }
         table, th, td {
-            border: 1px solid black;
+            xxborder: 1px solid black;
         }
         th, td {
-            padding: 8px;
-            text-align: left;
+            xxpadding: 8px;
+            xxtext-align: left;
         }
     </style>
+-->
 </head>
 <body>
+	<div style="width:100%;overflow-x:auto;font-size:1cqw">"
     <h1>Summary Logs for Date: <?= htmlspecialchars($date) ?> <?= $hour == 99 ? 'for All Hours' : 'and Hour: ' . htmlspecialchars($hour) ?></h1>
-    <table>
+    <table style="border-collapse:collapse;width:98%">
         <thead>
             <tr>
                 <th>Id</th>
@@ -113,6 +148,7 @@ function generateLogDataTable($logData) {
             <?php endif; ?>
         </tbody>
     </table>
+    </div>
     <?php
     // Close the connection
     $stmt->close();
