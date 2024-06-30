@@ -26,10 +26,12 @@
 # 5. Chase disparity in counts betweeen old mailstats and this - Some of it DONE
 # 6. Count emails delivered over ports 25/587/465 (SMTPS?)
 # 7. Arrange that the spec file overwrites the date even if it has been overwritten before
-# 8. Allow mailstats pages to be public or private  (=> templating the fragment))
+# 8. Allow mailstats pages to be public or private  (=> templating the fragment)) - DONE
+# 9. Update format of the summarylogs page
+# 10. Add in links to summarylogs in web pages
 # 
 # Future:
-# 1. Write summary line for each transaction to DB and link to it through cell in main table
+# 1. Write summary line for each transaction to DB and link to it through cell in main table -DONE (write to DB))
 # 2. Make DB password something more obscure.
 # 3. Prune the DB according to parameter 
 # 
@@ -762,7 +764,7 @@ if __name__ == "__main__":
 				DELETE FROM SummaryLogs
 				WHERE Date = %s
 				"""
-				cursor.execute(delete_query, (analysis_date))
+				cursor.execute(delete_query, (analysis_date,))   #Don't forget the syntactic sugar of the extra comma to make it a tuple!
 				# Get the number of records deleted
 				rows_deleted = cursor.rowcount
 				print(rows_deleted)
