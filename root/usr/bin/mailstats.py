@@ -6,14 +6,21 @@
 #
 # Mailstats
 #
-# Optional arguments:
-#  -h, --help            show this help message and exit
-#  -d DATE, --date DATE  Specify a valid date (yyyy-mm-dd) for the analysis
-#  -ef EMAILFILE, --emailfile EMAILFILE
-#                        Save an html file of the email sent (y/N)
-#  -tf TEXTFILE, --textfile TEXTFILE
-#                        Save a txt file of the html page (y/N)
-#  --version             show program's version number and exit
+#		usage: mailstats.py [-h] [-d DATE] [-ef EMAILFILE] [-tf TEXTFILE] [--version]
+#							[-db DBSAVE]
+#
+#		Mailstats
+#
+#		optional arguments:
+#		  -h, --help            show this help message and exit
+#		  -d DATE, --date DATE  Specify a valid date (yyyy-mm-dd) for the analysis
+#		  -ef EMAILFILE, --emailfile EMAILFILE
+#								Save an html file of the email sent (y/N)
+#		  -tf TEXTFILE, --textfile TEXTFILE
+#								Save a txt file of the html page (y/N)
+#		  --version             show program's version number and exit
+#		  -db DBSAVE, --dbsave DBSAVE
+#								Force save of summary logs in DB (y/N)
 #
 #
 # (June 2024 - bjr) Re-written in Python from Mailstats.pl (Perl) to conform to SME11 / Postfix / qpsmtpd log formats
@@ -27,13 +34,16 @@
 # 6. Count emails delivered over ports 25/587/465 (SMTPS?)
 # 7. Arrange that the spec file overwrites the date even if it has been overwritten before
 # 8. Allow mailstats pages to be public or private  (=> templating the fragment)) - DONE
-# 9. Update format of the summarylogs page
-# 10. Add in links to summarylogs in web pages
+# 9. Update format of the summarylogs page - DONE but still WIP
+# 10. Add in links to summarylogs in web pages - DONE but still WIP
+# 11. Move showSummaryLogs.php to individual directory "/opt/mailstats/php"
+# 12. Make sure other directories not visible through apache 
 # 
 # Future:
 # 1. Write summary line for each transaction to DB and link to it through cell in main table -DONE (write to DB))
 # 2. Make DB password something more obscure.
-# 3. Prune the DB according to parameter 
+# 3. Prune the DB according to parameter - delete corresponding page in opt/mailstats/html
+# 4. Prune the html directory according to parameter
 # 
 # Even more Future (if ever))
 # 2. Link each summary line through DB to actual transaction lines
