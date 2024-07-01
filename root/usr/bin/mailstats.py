@@ -777,6 +777,7 @@ if __name__ == "__main__":
 			print(f"Unable to connect to {DBName} on {DBHost} port {DBPort} error ({e}) ")
 			saveData = False
 	
+	nolinks = not saveData 
 	# Not sure we need these...
 	# if (ConfigDB,"qpsmtpd","RHSBL").lower() == 'enabled':
 		# RBLList = get_value(ConfigDB,"qpsmtpd","RBLList")
@@ -1120,7 +1121,10 @@ if __name__ == "__main__":
 		template = PageTemplate(template_content)
 		# Render the template with the 2D array data and column headers
 		try:
-			rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, reporting_date=analysis_date, title=hello_string, version=version_string)
+			rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, 
+										reporting_date=analysis_date, title=hello_string, 
+										version=version_string,
+										nolinks=nolinks)
 		except Exception as e:
 			print(f"Chameleon template Exception {e}")
 	except Exception as e:
