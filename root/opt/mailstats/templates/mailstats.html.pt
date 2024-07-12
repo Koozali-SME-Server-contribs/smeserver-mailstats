@@ -66,20 +66,20 @@
                             <a tal:attributes="href string:./showSummaryLogs.php?hour=${repeat.row.index}">
                                 <!-- Check if cell value is zero and print "-" -->
                                 <tal:case tal:condition="cell != 0" tal:content="cell">Cell</tal:case>
-                                <tal:case tal:condition="cell == 0" tal:content="'-'">-</tal:case>
+                                <tal:case tal:condition="cell == 0" tal:content="''">-</tal:case>
                             </a>
                         </tal:case>
                         <!-- For 'PERCENT' column or other rows, just display the cell content -->
                         <tal:case tal:condition="not (repeat.row.index >= 0 and repeat.row.index < 24 and repeat.cell.index != 16)">
                             <!-- Check if cell value is zero and print "-" -->
                             <tal:case tal:condition="cell != 0" tal:content="cell">Cell</tal:case>
-                            <tal:case tal:condition="cell == 0" tal:content="'-'">-</tal:case>
+                            <tal:case tal:condition="cell == 0" tal:content="''">-</tal:case>
                         </tal:case>
                     </tal:case>
                     <tal:case tal:condition="nolinks">
                         <!-- Display cell content without link if 'nolinks' is true -->
                         <tal:case tal:condition="cell != 0" tal:content="cell">Cell</tal:case>
-                        <tal:case tal:condition="cell == 0" tal:content="'-'">-</tal:case>
+                        <tal:case tal:condition="cell == 0" tal:content="''">-</tal:case>
                     </tal:case>
                 </td>
         </tr>
