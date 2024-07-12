@@ -53,6 +53,9 @@
 # yum install html2text --enablerepo=epel
 # yum install mysql-connector-python --enablerepo=epel (not sure if this is required as well the pip3))
 # pip3 install mysql-connector
+# pip3 install numpy
+# pip3 install plotly
+# pip3 install pandas
 #
 # Rocky8: (probably - not yet checked this)
 #
@@ -76,6 +79,9 @@ import codecs
 import argparse
 import tempfile
 import mysql.connector
+import numpy as np
+import plotly.graph_objects as go
+import plotly.express as px
 
 Mailstats_version = '1.2'
 build_date_time = "2024-06-18 12:03:40OURCE" 
@@ -119,6 +125,205 @@ ColPercent = 25
 import mysql.connector
 import json
 
+def sanitize_data(data2d):
+    """
+    Convert data to numeric values, stripping out non-numeric characters.
+    
+    Parameters:
+    - data2d (list of lists): A 2D list containing the data.
+    
+    Returns:
+    - numpy.ndarray: Sanitized 2D numpy array with numeric data.
+    """
+    def to_numeric(value):
+        try:
+            if isinstance(value, str):
+                # Remove any extra characters like '%' and convert to float
+                return float(value.replace('%', '').strip())
+            else:
+                return float(value)
+        except ValueError:
+            return 0.0  # Default to 0 if conversion fails
+
+    sanitized_data = []
+    for row in data2d:
+        sanitized_row = [to_numeric(value) for value in row]
+        sanitized_data.append(sanitized_row)
+    
+    return np.array(sanitized_data)
+
+def create_stacked_bar_graph(data2d, xLabels, save_path='stacked_bar_graph.html'):
+    """
+    Creates and saves a stacked bar graph from given 2D numpy array data using Plotly.
+
+    Parameters:
+    - data2d (list of lists or numpy.ndarray): A 2D list or numpy array containing the data.
+    - xLabels (list): A list of category labels for the x-axis.
+    - save_path (str): The path where the plot image will be saved.
+    """
+    # Identify columns to be removed based on their headers
+    excluded_columns = ["Count", "PERCENT"]
+
+    # Create a boolean array for columns to keep (not in excluded_columns)
+    columns_to_keep = [label not in excluded_columns for label in xLabels]
+
+    # Filter out the columns both from the data and xLabels
+    filtered_data2d = []
+    for row in data2d:
+        filtered_row = [value for keep, value in zip(columns_to_keep, row) if keep]
+        filtered_data2d.append(filtered_row)
+
+    filtered_xLabels = [label for label, keep in zip(xLabels, columns_to_keep) if keep]
+
+    # Sanitize data and convert it to a numpy array
+    data = sanitize_data(filtered_data2d)
+
+    # Find columns that are not fully zero
+    non_zero_columns = np.any(data != 0, axis=0)
+
+    # Filter out fully zero columns from both the data and x_labels
+    filtered_data = data[:, non_zero_columns]
+    filtered_x_labels = np.array(filtered_xLabels)[non_zero_columns]
+
+    fig = go.Figure()
+
+    for i in range(filtered_data.shape[0]):
+        if i <= 23:  # Ensure to annotate rows with proper names (e.g., Hours)
+            fig.add_trace(go.Bar(
+                name=f'Hour {i}',
+                x=filtered_x_labels,
+                y=filtered_data[i]
+            ))
+
+    fig.update_layout(
+        barmode='stack',
+        title='Stacked Bar Graph Example',
+        xaxis=dict(title='Category'),
+        yaxis=dict(title='Values'),
+        legend_title_text='Rows'
+    )
+
+    # Save the graph to an HTML file
+    fig.write_html(save_path)
+  
+def sanitize_and_filter_data(data2d, exclude_labels, xLabels):
+    """
+    Sanitize data by removing unwanted columns and converting to numeric values.
+    
+    Parameters:
+    - data2d (list of lists): A 2D list containing the data.
+    - exclude_labels (list): Labels to exclude from the data and x-axis.
+    - xLabels (list): Current labels for the x-axis.
+    
+    Returns:
+    - numpy.ndarray: Sanitized 2D numpy array with numeric data.
+    - list: Filtered x-axis labels.
+    """
+    def to_numeric(value):
+        try:
+            if isinstance(value, str):
+                # Remove any extra characters like '%' and convert to float
+                return float(value.replace('%', '').strip())
+            else:
+                return float(value)
+        except ValueError:
+            return 0.0  # Default to 0 if conversion fails
+
+    # Create a boolean array for columns to keep (not in exclude_labels)
+    columns_to_keep = [label not in exclude_labels for label in xLabels]
+
+    # Filter out the columns both from the data and xLabels
+    filtered_data2d = []
+    for row in data2d:
+        filtered_row = [to_numeric(value) for keep, value in zip(columns_to_keep, row) if keep]
+        filtered_data2d.append(filtered_row)
+
+    filtered_xLabels = [label for label, keep in zip(xLabels, columns_to_keep) if keep]
+
+    return np.array(filtered_data2d), filtered_xLabels
+
+def create_heatmap(data2d, xLabels, yLabels, save_path='heatmap.html'):
+    """
+    Creates and saves a heatmap from given 2D numpy array data using Plotly.
+    Parameters:
+    - data2d (list of lists or numpy.ndarray): A 2D list or numpy array containing the data.
+    - xLabels (list): A list of category labels for the x-axis.
+    - yLabels (list): A list of labels for the y-axis (e.g., hours).
+    - save_path (str): The path where the plot image will be saved.
+    """
+    excluded_columns = ["Count", "PERCENT", "TOTALS"]
+    # Remove rows 24 and 25 by slicing the data and labels
+    data2d = data2d[:24]
+    yLabels = yLabels[:24]  # Ensure yLabels also excludes those rows
+
+    # Sanitize and filter the data
+    sanitized_data, filtered_xLabels = sanitize_and_filter_data(data2d, excluded_columns, xLabels)
+
+    # Ensure that the length of yLabels matches the number of rows (0 to n should be n+1 rows)
+    if len(yLabels) != sanitized_data.shape[0]:
+        raise ValueError("The length of yLabels must match the number of rows in the data.")
+
+    # Create the heatmap
+    # Define a custom color scale where 0 is white
+    color_scale = [
+        [0, "lightgrey"],
+        [0.3, "blue"],
+        [0.6, 'green'],
+        [0.75,'yellow'],
+        [1,'red']
+    ]
+    fig = px.imshow(sanitized_data,
+                    labels=dict(x="Category", y="Hour", color="Count"),
+                    x=filtered_xLabels,
+                    y=yLabels,                  
+                    color_continuous_scale=color_scale)
+    
+    fig.update_layout(
+        title='Heatmap of Counts by Category per Hour',
+        xaxis_nticks=len(filtered_xLabels),
+        yaxis_nticks=len(yLabels),
+        margin=dict(l=0, r=0, t=30, b=0)
+
+    )
+    fig.update_xaxes(showticklabels=True, side='bottom', showline=True, linewidth=2, linecolor='black', mirror=True)
+    fig.update_yaxes(showticklabels=True, showline=True, linewidth=2, linecolor='black', mirror=True)
+   
+    fig.write_html(save_path)    
+    
+def create_line_chart(data2d, xLabels,yLabels,  save_path='line_chart.html'):
+    fig = go.Figure()
+    
+    excluded_columns = ["Count", "PERCENT", "TOTALS"]
+    # Remove rows 24 and 25 by slicing the data and labels
+    data2d = data2d[:24]
+    yLabels = yLabels[:24]  # Ensure yLabels also excludes those rows
+
+    # Sanitize and filter the data
+    sanitized_data, filtered_xLabels = sanitize_and_filter_data(data2d, excluded_columns, xLabels)
+
+    # Ensure that the length of yLabels matches the number of rows (0 to n should be n+1 rows)
+    if len(yLabels) != sanitized_data.shape[0]:
+        raise ValueError("The length of yLabels must match the number of rows in the data.")
+
+
+    for i, category in enumerate(filtered_xLabels):
+        fig.add_trace(go.Scatter(
+            mode='lines+markers',
+            name=category,
+            x=[f'Hour {j}' for j in range(sanitized_data.shape[0])],
+            y=sanitized_data[:, i]
+        ))
+
+    fig.update_layout(
+        title='Line Chart of Counts by Category per Hour',
+        xaxis=dict(title='Hour'),
+        yaxis=dict(title='Count'),
+        legend_title_text='Category'
+    )
+
+    fig.write_html(save_path)
+
+    
 def save_summaries_to_db(date_str, hour, parsed_data):
 
     # Convert parsed_data to JSON string
@@ -1213,6 +1418,13 @@ if __name__ == "__main__":
 			text_file_path = temp_file_name
 	else:
 		text_file_path = ""
+	
+	# Create graph of data
+	create_stacked_bar_graph(columnCounts_2d,columnHeaders)
+	yLabels = [f'Hour {i}' for i in range(26)]
+	create_heatmap(columnCounts_2d,columnHeaders,yLabels)
+	create_line_chart(columnCounts_2d,columnHeaders,yLabels)
+	
 	html_content = None
 	text_content = None
 	#Now see if Email required
