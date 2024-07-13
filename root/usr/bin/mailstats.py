@@ -82,6 +82,7 @@ import mysql.connector
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
+import colorsys
 
 Mailstats_version = '1.2'
 build_date_time = "2024-06-18 12:03:40OURCE" 
@@ -125,15 +126,21 @@ ColPercent = 25
 import mysql.connector
 import json
 
-def sanitize_data(data2d):
+def sanitize_and_filter_data_for_stacked_bar(data2d, xLabels, yLabels, exclude_columns_labels, exclude_rows_labels):
     """
-    Convert data to numeric values, stripping out non-numeric characters.
+    Sanitize data by removing unwanted columns and rows, and converting to numeric values.
     
     Parameters:
     - data2d (list of lists): A 2D list containing the data.
+    - xLabels (list): Current labels for the x-axis.
+    - yLabels (list): Current labels for the y-axis.
+    - exclude_columns_labels (list): Labels of columns to exclude from the data and x-axis.
+    - exclude_rows_labels (list): Labels of rows to exclude from the y-axis.
     
     Returns:
     - numpy.ndarray: Sanitized 2D numpy array with numeric data.
+    - list: Filtered x-axis labels.
+    - list: Filtered y-axis labels.
     """
     def to_numeric(value):
         try:
@@ -145,67 +152,92 @@ def sanitize_data(data2d):
         except ValueError:
             return 0.0  # Default to 0 if conversion fails
 
-    sanitized_data = []
-    for row in data2d:
-        sanitized_row = [to_numeric(value) for value in row]
-        sanitized_data.append(sanitized_row)
+    # Filter out columns based on their labels
+    exclude_columns_indices = [xLabels.index(label) for label in exclude_columns_labels if label in xLabels]
     
-    return np.array(sanitized_data)
+    filtered_data2d = [
+        [to_numeric(value) for idx, value in enumerate(row) if idx not in exclude_columns_indices]
+        for row in data2d
+    ]
+    
+    filtered_xLabels = [label for idx, label in enumerate(xLabels) if idx not in exclude_columns_indices]
+    
+    # Filter out rows based on their labels
+    filtered_data2d = [row for label, row in zip(yLabels, filtered_data2d) if label not in exclude_rows_labels]
+    filtered_yLabels = [label for label in yLabels if label not in exclude_rows_labels]
+    
+    # Convert filtered data to numpy array
+    return np.array(filtered_data2d), filtered_xLabels, filtered_yLabels
+      
+def generate_distinct_colors(num_colors):
+    """Generate distinct colors using HSV color space."""
+    colors = []
+    for i in range(num_colors):
+        hue = i / num_colors
+        saturation = 0.7
+        value = 0.9
+        r, g, b = colorsys.hsv_to_rgb(hue, saturation, value)
+        colors.append(f'rgb({int(r * 255)},{int(g * 255)},{int(b * 255)})')
+    return colors
 
-def create_stacked_bar_graph(data2d, xLabels, save_path='stacked_bar_graph.html'):
+def create_stacked_bar_graph(data2d, xLabels, yLabels, save_path='stacked_bar_graph.html'):
     """
     Creates and saves a stacked bar graph from given 2D numpy array data using Plotly.
-
+    
     Parameters:
     - data2d (list of lists or numpy.ndarray): A 2D list or numpy array containing the data.
     - xLabels (list): A list of category labels for the x-axis.
+    - yLabels (list): A list of labels for the y-axis (e.g., hours).
     - save_path (str): The path where the plot image will be saved.
     """
-    # Identify columns to be removed based on their headers
-    excluded_columns = ["Count", "PERCENT"]
+    # Identify columns to be removed based on their headers (label names) and indices (hours 24 and 25)
+    exclude_columns_labels = ["Count", "PERCENT","TOTALS"]
+    exclude_rows_labels = ["24:00", "25:00"]
 
-    # Create a boolean array for columns to keep (not in excluded_columns)
-    columns_to_keep = [label not in excluded_columns for label in xLabels]
-
-    # Filter out the columns both from the data and xLabels
-    filtered_data2d = []
-    for row in data2d:
-        filtered_row = [value for keep, value in zip(columns_to_keep, row) if keep]
-        filtered_data2d.append(filtered_row)
-
-    filtered_xLabels = [label for label, keep in zip(xLabels, columns_to_keep) if keep]
-
-    # Sanitize data and convert it to a numpy array
-    data = sanitize_data(filtered_data2d)
-
-    # Find columns that are not fully zero
-    non_zero_columns = np.any(data != 0, axis=0)
-
-    # Filter out fully zero columns from both the data and x_labels
-    filtered_data = data[:, non_zero_columns]
-    filtered_x_labels = np.array(filtered_xLabels)[non_zero_columns]
-
+    # Ensure input yLabels correspond to the data
+    if len(yLabels) != len(data2d):
+        raise ValueError(f"The length of yLabels {len(yLabels)} must match the number of rows in the data {len(data2d)}.")
+    
+    # Sanitize and filter the data
+    sanitized_data, filtered_xLabels, filtered_yLabels = sanitize_and_filter_data_for_stacked_bar(data2d, xLabels, yLabels, exclude_columns_labels, exclude_rows_labels)
+    
+    # Ensure that the length of yLabels matches the number of rows (0 to n should be n+1 rows)
+    if len(filtered_yLabels) != sanitized_data.shape[0]:
+        raise ValueError(f"The length of filtered_yLabels {len(filtered_yLabels)} must match the number of rows in the data {sanitized_data.shape[0]}.")
+    
+    # Transpose the data so that hours are on the x-axis and categories are stacked in the y-axis
+    transposed_data = sanitized_data.T
+    
     fig = go.Figure()
+    
+    # Get unique colors for each category
+    extended_colors = generate_distinct_colors(len(filtered_xLabels))
+    
+    #print(len(filtered_xLabels))
+    #print(extended_colors)
+    #quit()
+    
+    for i, category in enumerate(filtered_xLabels):
+        fig.add_trace(go.Bar(
+            name=category,
+            x=filtered_yLabels,
+            y=transposed_data[i],
+            marker_color=extended_colors[i % len(extended_colors)]  # Cycle through the colors if there are more categories than colors
 
-    for i in range(filtered_data.shape[0]):
-        if i <= 23:  # Ensure to annotate rows with proper names (e.g., Hours)
-            fig.add_trace(go.Bar(
-                name=f'Hour {i}',
-                x=filtered_x_labels,
-                y=filtered_data[i]
-            ))
-
+        ))
+    
     fig.update_layout(
         barmode='stack',
-        title='Stacked Bar Graph Example',
-        xaxis=dict(title='Category'),
+        title='Stacked Bar Graph by Hour',
+        xaxis=dict(title='Hour'),
         yaxis=dict(title='Values'),
-        legend_title_text='Rows'
+        legend_title_text='Categories'
     )
-
+    
     # Save the graph to an HTML file
     fig.write_html(save_path)
-  
+
+ 
 def sanitize_and_filter_data(data2d, exclude_labels, xLabels):
     """
     Sanitize data by removing unwanted columns and converting to numeric values.
@@ -1419,11 +1451,13 @@ if __name__ == "__main__":
 	else:
 		text_file_path = ""
 	
-	# Create graph of data
-	create_stacked_bar_graph(columnCounts_2d,columnHeaders)
-	yLabels = [f'Hour {i}' for i in range(26)]
-	create_heatmap(columnCounts_2d,columnHeaders,yLabels)
-	create_line_chart(columnCounts_2d,columnHeaders,yLabels)
+	# Create graphs of data
+	#yLabels = [f'Hour {i}' for i in range(len(columnCounts_2d))]
+	yLabels = [f'{i:02d}:00' for i in range(len(columnCounts_2d))]
+	create_stacked_bar_graph(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'stacked_bar_'+analysis_date+'.html')
+	#yLabels = [f'Hour {i}' for i in range(26)]
+	create_heatmap(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'heatmap_'+analysis_date+'.html')
+	create_line_chart(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'line_graph_'+analysis_date+'.html')
 	
 	html_content = None
 	text_content = None
