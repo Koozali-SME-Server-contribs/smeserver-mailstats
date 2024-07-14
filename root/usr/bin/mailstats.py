@@ -231,12 +231,21 @@ def create_stacked_bar_graph(data2d, xLabels, yLabels, save_path='stacked_bar_gr
         title='Stacked Bar Graph by Hour',
         xaxis=dict(title='Hour'),
         yaxis=dict(title='Values'),
-        legend_title_text='Categories'
+        legend_title_text='Categories',
+        margin = {
+            'l': 50,  #left margin
+            'r': 120, #right margin
+            't': 50,  #top margin
+            'b': 50   #bottom margin
+        }
+ 
     )
     
     # Save the graph to an HTML file
     fig.write_html(save_path)
-
+    # Write it to a var and return the string
+    graph_html = fig.to_html(full_html=False)
+    return graph_html
  
 def sanitize_and_filter_data(data2d, exclude_labels, xLabels):
     """
@@ -320,7 +329,11 @@ def create_heatmap(data2d, xLabels, yLabels, save_path='heatmap.html'):
     fig.update_xaxes(showticklabels=True, side='bottom', showline=True, linewidth=2, linecolor='black', mirror=True)
     fig.update_yaxes(showticklabels=True, showline=True, linewidth=2, linecolor='black', mirror=True)
    
-    fig.write_html(save_path)    
+    fig.write_html(save_path)  
+    # Write it to a var and return the string
+    graph_html = fig.to_html(full_html=False)
+    return graph_html
+  
     
 def create_line_chart(data2d, xLabels,yLabels,  save_path='line_chart.html'):
     fig = go.Figure()
@@ -354,6 +367,9 @@ def create_line_chart(data2d, xLabels,yLabels,  save_path='line_chart.html'):
     )
 
     fig.write_html(save_path)
+    # Write it to a var and return the string
+    graph_html = fig.to_html(full_html=False)
+    return graph_html
 
     
 def save_summaries_to_db(date_str, hour, parsed_data):
@@ -1357,6 +1373,25 @@ if __name__ == "__main__":
 
 	#print(columnCounts_2d)
 	#quit()
+	
+	#Compute next and previous dates
+	day_format = "%Y-%m-%d"
+	# Convert the time string to a datetime object
+	date_obj = datetime.strptime(analysis_date, day_format)
+	# Compute the next date by adding one day
+	next_date = date_obj + timedelta(days=1)
+	# Compute the previous date by subtracting one day
+	previous_date = date_obj - timedelta(days=1)
+	# Convert the datetime objects back to strings in the desired format
+	next_date_str = next_date.strftime(day_format)
+	previous_date_str = previous_date.strftime(day_format)
+
+	# Create graphs of data
+	yLabels = [f'{i:02d}:00' for i in range(len(columnCounts_2d))]
+	stacked_Bar_html = create_stacked_bar_graph(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'stacked_bar_'+analysis_date+'.html')
+	heatmap_html = create_heatmap(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'heatmap_'+analysis_date+'.html')
+	line_graph_html = create_line_chart(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'line_graph_'+analysis_date+'.html')
+
 	#Now apply the results to the chameleon template - main table
 	# Path to the template file
 	template_path = template_dir+'mailstats.html.pt'
@@ -1371,7 +1406,14 @@ if __name__ == "__main__":
 			rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, 
 										reporting_date=analysis_date, title=hello_string, 
 										version=version_string,
-										nolinks=nolinks)
+										nolinks=nolinks,
+										stacked_bar_graph=stacked_Bar_html,
+										heatmap=heatmap_html,
+										line_graph=line_graph_html,
+										PreviousDate=previous_date_str,
+										NextDate=next_date_str,
+										DomainName=DomainName
+										)
 		except Exception as e:
 			print(f"Chameleon template Exception {e}")
 	except Exception as e:
@@ -1403,32 +1445,24 @@ if __name__ == "__main__":
 		cursor.close()
 		conn.close()
 	
-	#Add in navigation html - next/previous/see in browser
-	day_format = "%Y-%m-%d"
-	# Convert the time string to a datetime object
-	date_obj = datetime.strptime(analysis_date, day_format)
-	# Compute the next date by adding one day
-	next_date = date_obj + timedelta(days=1)
-	# Compute the previous date by subtracting one day
-	previous_date = date_obj - timedelta(days=1)
-	# Convert the datetime objects back to strings in the desired format
-	next_date_str = next_date.strftime(day_format)
-	previous_date_str = previous_date.strftime(day_format)
-	navigation_str_html = "<div class='linksattop'>\
-<a class='prevlink' href='http://${DomainName}/mailstats/mailstats_for_${PreviousDate}.html'>Previous</a>\
-<div class='divshowindex'><a class='showindex' href='http://${DomainName}/mailstats/'>Index of files</a></div>\
-<a class='nextlink' href='http://${DomainName}/mailstats/mailstats_for_${NextDate}.html'>Next</a>\
-</div>"
-	try:
-		template = PageTemplate(navigation_str_html)
-		try:
-			Nav_str = template(PreviousDate=previous_date_str,NextDate=next_date_str,TodayDate=analysis_date,DomainName=DomainName)
-		except Exception as e:
-			print(f"Chameleon nav template Exception {e}")
-	except Exception as e:
-		print(f"Chameleon nav render Exception {e}")
-	# And insert it
-	total_html = insert_string_after(total_html,Nav_str, "<!---Navigation here-->")
+	# #Add in navigation html - next/previous/see in browser
+	# navigation_str_html = "<div class='linksattop'>\
+# <a class='prevlink' href='http://${DomainName}/mailstats/mailstats_for_${PreviousDate}.html'>Previous</a>\
+# <div class='divshowindex'><a class='showindex' href='http://${DomainName}/mailstats/'>Index of files</a></div>\
+# <a class='nextlink' href='http://${DomainName}/mailstats/mailstats_for_${NextDate}.html'>Next</a>\
+# </div>"
+
+	# try:
+		# template = PageTemplate(navigation_str_html)
+		# try:
+			# Nav_str = template(PreviousDate=previous_date_str,NextDate=next_date_str,TodayDate=analysis_date,DomainName=DomainName)
+		# except Exception as e:
+			# print(f"Chameleon nav template Exception {e}")
+	# except Exception as e:
+		# print(f"Chameleon nav render Exception {e}")
+	# # And insert it
+	# total_html = insert_string_after(total_html,Nav_str, "<!---Navigation here-->")
+	
 
 	# Write the rendered HTML to a file
 	output_path = html_page_dir+'mailstats_for_'+analysis_date
@@ -1451,13 +1485,6 @@ if __name__ == "__main__":
 	else:
 		text_file_path = ""
 	
-	# Create graphs of data
-	#yLabels = [f'Hour {i}' for i in range(len(columnCounts_2d))]
-	yLabels = [f'{i:02d}:00' for i in range(len(columnCounts_2d))]
-	create_stacked_bar_graph(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'stacked_bar_'+analysis_date+'.html')
-	#yLabels = [f'Hour {i}' for i in range(26)]
-	create_heatmap(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'heatmap_'+analysis_date+'.html')
-	create_line_chart(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'line_graph_'+analysis_date+'.html')
 	
 	html_content = None
 	text_content = None

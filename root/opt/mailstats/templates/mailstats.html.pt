@@ -1,7 +1,4 @@
 <!DOCTYPE html>
-<!-- 1. Take out style for table for email
-	 2. Switch "see in Browser" to "index" in web version 
--->
 <html><head>
 	<meta charset="utf-8">
 	<title>SMEServer Mailstats</title>
@@ -40,13 +37,32 @@
 </head>
 <body>
    	<div style="width:100%;overflow-x:auto;font-size:1cqw">
-    <!---Navigation here-->
+		<!---Navigation here-->
+		<div class='linksattop'>
+			<a class='prevlink' href='http://${DomainName}/mailstats/mailstats_for_${PreviousDate}.html'>Previous</a>
+			<div class='divshowindex'><a class='showindex' href='http://${DomainName}/mailstats/'>Index of files</a></div>
+			<a class='nextlink' href='http://${DomainName}/mailstats/mailstats_for_${NextDate}.html'>Next</a>
+		</div>
     <br />
     <h2>${title}</h2>
     <br />
-    <!---Add in header information here -->
+    <div class="headerpanel">
+		<div class = "innerheaderpanel">
+			<!---Add in header information here -->
+		</div>
+    </div>
     <br />
     <br />
+    <!--Tabs -->
+    <div class="tab-container">
+    <div class="tab tab-active" onclick="openTab(event, 'tab1')">Table</div>
+    <div class="tab" onclick="openTab(event, 'tab2')">Stacked Bar Graph</div>
+    <div class="tab" onclick="openTab(event, 'tab3')">Heat Map</div>
+    <div class="tab" onclick="openTab(event, 'tab4')">Line Graph</div>
+    </div>
+
+	<div id="tab1" class="tab-content tab-content-active">
+	<div class = "maintable">
 	<table style="border-collapse:collapse;width:98%">
 		<thead>
 			<tr>
@@ -85,11 +101,63 @@
         </tr>
 		</tbody>
 	</table>
+	</div>
+	</div>
+	<!-- Next Tab-->
+	<div id="tab2" class="tab-content">
+<!--<div class = "parent-container">
+		<iframe class="iframe-container" src="stacked_bar_2024-07-12.html" title="Embedded Page">
+			Your browser does not support iframes.
+		</iframe>
+	</div>
+-->
+		<a href="stacked_bar_2024-07-12.html">${structure: stacked_bar_graph}</a>
+	<a href="stacked_bar_${reporting_date}.html">${structure: stacked_bar_graph}</a>
+	</div>
+	<!-- Next Tab-->
+	<div id="tab3" class="tab-content">
+<!--
+	<div class = "parent-container">
+		<iframe class="iframe-container" src="heatmap_2024-07-12.html" title="Embedded Page">
+			Your browser does not support iframes.
+		</iframe>
+	</div>
+-->
+	<a href="heatmap_${reporting_date}.html">${structure: heatmap}</a>
+	</div>
+	<!-- Next Tab-->
+	<div id="tab4" class="tab-content">
+<!--<div class = "parent-container">
+		<iframe class="iframe-container" src="line_graph_2024-07-12.html" title="Embedded Page">
+			Your browser does not support iframes.
+		</iframe>
+	</div>
+-->
+	<a href="line_graph_${reporting_date}.html">${structure: line_graph}</a>
+	</div>
+	
+	<div class = "subtables">
     <!---Add in sub tables here -->
+    </div>
     <br />
-    <footer>${version}</footer>
     
-	<script>window.onload = function(){doNavs();} </script> 
+    <footer class="footer">${version}</footer>
+    
+	<script>
+		window.onload = function(){doNavs();} 
+		function openTab(event, tabId){
+		// Get all elements with class="tab-content" and hide them
+		const tabContents = document.querySelectorAll('.tab-content');
+		tabContents.forEach(content => content.classList.remove('tab-content-active'));
+
+		// Get all elements with class="tab" and remove the class "tab-active"
+		const tabs = document.querySelectorAll('.tab');
+		tabs.forEach(tab => tab.classList.remove('tab-active'));
+
+		// Show the current tab content, and add an "active" class to the clicked tab
+		document.getElementById(tabId).classList.add('tab-content-active');
+		event.target.classList.add('tab-active');}
+	</script> 
 	
 	<p class="cssvalid">
 		<a href="http://jigsaw.w3.org/css-validator/check/referer">
