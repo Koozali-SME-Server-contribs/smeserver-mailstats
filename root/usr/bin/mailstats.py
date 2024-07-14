@@ -334,8 +334,8 @@ def create_heatmap(data2d, xLabels, yLabels, save_path='heatmap.html'):
     graph_html = fig.to_html(full_html=False)
     return graph_html
   
-    
-def create_line_chart(data2d, xLabels,yLabels,  save_path='line_chart.html'):
+   
+def create_line_chart(data2d, xLabels, yLabels, save_path='line_chart.html'):
     fig = go.Figure()
     
     excluded_columns = ["Count", "PERCENT", "TOTALS"]
@@ -350,12 +350,16 @@ def create_line_chart(data2d, xLabels,yLabels,  save_path='line_chart.html'):
     if len(yLabels) != sanitized_data.shape[0]:
         raise ValueError("The length of yLabels must match the number of rows in the data.")
 
+    # Remove rows with all zero elements and the corresponding categories
+    nonzero_rows_indices = np.where(~np.all(sanitized_data == 0, axis=0))[0]  # find rows with non-zero elements
+    sanitized_data = sanitized_data[:, nonzero_rows_indices]
+    filtered_xLabels = [filtered_xLabels[i] for i in nonzero_rows_indices]  # update filtered_xLabels
 
     for i, category in enumerate(filtered_xLabels):
         fig.add_trace(go.Scatter(
             mode='lines+markers',
             name=category,
-            x=[f'Hour {j}' for j in range(sanitized_data.shape[0])],
+            x= [f'{j:02d}:00' for j in range(sanitized_data.shape[0])],  
             y=sanitized_data[:, i]
         ))
 
@@ -365,11 +369,13 @@ def create_line_chart(data2d, xLabels,yLabels,  save_path='line_chart.html'):
         yaxis=dict(title='Count'),
         legend_title_text='Category'
     )
-
+    
     fig.write_html(save_path)
     # Write it to a var and return the string
     graph_html = fig.to_html(full_html=False)
     return graph_html
+
+
 
     
 def save_summaries_to_db(date_str, hour, parsed_data):
