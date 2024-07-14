@@ -41,8 +41,7 @@
 		<div class='linksattop'>
 			<a class='prevlink' href='http://${DomainName}/mailstats/mailstats_for_${PreviousDate}.html'>Previous</a>
 			<div class='divshowindex'><a class='showindex' href='http://${DomainName}/mailstats/'>Index of files</a></div>
-			<a class='nextlink' href='http://${DomainName}/mailstats/mailstats_for_${NextDate}.html'>Next</a>
-		</div>
+			<a class='nextlink' href='http://${DomainName}/mailstats/mailstats_for_${NextDate}.html'>Next</a></div> <!--format important here - used to insert see in browser for email -->
     <br />
     <h2>${title}</h2>
     <br />
@@ -105,35 +104,16 @@
 	</div>
 	<!-- Next Tab-->
 	<div id="tab2" class="tab-content">
-<!--<div class = "parent-container">
-		<iframe class="iframe-container" src="stacked_bar_2024-07-12.html" title="Embedded Page">
-			Your browser does not support iframes.
-		</iframe>
-	</div>
--->
 		<a href="stacked_bar_2024-07-12.html">${structure: stacked_bar_graph}</a>
 	<a href="stacked_bar_${reporting_date}.html">${structure: stacked_bar_graph}</a>
 	</div>
 	<!-- Next Tab-->
 	<div id="tab3" class="tab-content">
-<!--
-	<div class = "parent-container">
-		<iframe class="iframe-container" src="heatmap_2024-07-12.html" title="Embedded Page">
-			Your browser does not support iframes.
-		</iframe>
-	</div>
--->
-	<a href="heatmap_${reporting_date}.html">${structure: heatmap}</a>
+		<a href="heatmap_${reporting_date}.html">${structure: heatmap}</a>
 	</div>
 	<!-- Next Tab-->
 	<div id="tab4" class="tab-content">
-<!--<div class = "parent-container">
-		<iframe class="iframe-container" src="line_graph_2024-07-12.html" title="Embedded Page">
-			Your browser does not support iframes.
-		</iframe>
-	</div>
--->
-	<a href="line_graph_${reporting_date}.html">${structure: line_graph}</a>
+		<a href="line_graph_${reporting_date}.html">${structure: line_graph}</a>
 	</div>
 	
 	<div class = "subtables">
