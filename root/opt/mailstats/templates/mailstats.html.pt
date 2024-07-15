@@ -78,15 +78,15 @@
                     <!-- Check if 'nolinks' is true. If not, generate links for rows 0 to 23 except 'PERCENT' column -->
                     <tal:case tal:condition="not: nolinks">
                         <tal:case tal:condition="repeat.row.index >= 0 and repeat.row.index < 24 and repeat.cell.index != 16">
-                            <a tal:attributes="href string:./showSummaryLogs.php?hour=${repeat.row.index}">
-                                <!-- Check if cell value is zero and print "-" -->
+                            <a tal:attributes="href string:./showSummaryLogs.php?date=${reporting_date}&hour=${repeat.row.index}">
+                                <!-- Check if cell value is zero and print "" -->
                                 <tal:case tal:condition="cell != 0" tal:content="cell">Cell</tal:case>
                                 <tal:case tal:condition="cell == 0" tal:content="''">-</tal:case>
                             </a>
                         </tal:case>
                         <!-- For 'PERCENT' column or other rows, just display the cell content -->
                         <tal:case tal:condition="not (repeat.row.index >= 0 and repeat.row.index < 24 and repeat.cell.index != 16)">
-                            <!-- Check if cell value is zero and print "-" -->
+                            <!-- Check if cell value is zero and print "" -->
                             <tal:case tal:condition="cell != 0" tal:content="cell">Cell</tal:case>
                             <tal:case tal:condition="cell == 0" tal:content="''">-</tal:case>
                         </tal:case>
