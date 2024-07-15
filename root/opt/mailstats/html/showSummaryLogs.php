@@ -74,7 +74,7 @@ function generateLogDataTable($logData) {
     $keys = array_keys($mergedData);
     $values = array_values($mergedData);
     
-    $output = '<table class="stripes" style="border-collapse: collapse; width:95%;overflow-x:auto; margin:2%"><tbody>';
+    $output = '<table class="stripes" style="border-collapse: collapse; width:95%;overflow-x:auto; margin: 0.6% auto 0.6% auto;"><tbody>';
 
     // Divide keys and values into sets of 6
     $chunks = array_chunk($keys, 6);
