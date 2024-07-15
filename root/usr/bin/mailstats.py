@@ -213,10 +213,6 @@ def create_stacked_bar_graph(data2d, xLabels, yLabels, save_path='stacked_bar_gr
     # Get unique colors for each category
     extended_colors = generate_distinct_colors(len(filtered_xLabels))
     
-    #print(len(filtered_xLabels))
-    #print(extended_colors)
-    #quit()
-    
     for i, category in enumerate(filtered_xLabels):
         fig.add_trace(go.Bar(
             name=category,
@@ -244,7 +240,7 @@ def create_stacked_bar_graph(data2d, xLabels, yLabels, save_path='stacked_bar_gr
     # Save the graph to an HTML file
     fig.write_html(save_path)
     # Write it to a var and return the string
-    graph_html = fig.to_html(full_html=False)
+    graph_html = fig.to_html(full_html=False,include_plotlyjs='https://cdn.plot.ly/plotly-latest.min.js')
     return graph_html
  
 def sanitize_and_filter_data(data2d, exclude_labels, xLabels):
@@ -331,7 +327,7 @@ def create_heatmap(data2d, xLabels, yLabels, save_path='heatmap.html'):
    
     fig.write_html(save_path)  
     # Write it to a var and return the string
-    graph_html = fig.to_html(full_html=False)
+    graph_html = fig.to_html(full_html=False,include_plotlyjs='https://cdn.plot.ly/plotly-latest.min.js')
     return graph_html
   
    
@@ -372,7 +368,7 @@ def create_line_chart(data2d, xLabels, yLabels, save_path='line_chart.html'):
     
     fig.write_html(save_path)
     # Write it to a var and return the string
-    graph_html = fig.to_html(full_html=False)
+    graph_html = fig.to_html(full_html=False,include_plotlyjs='https://cdn.plot.ly/plotly-latest.min.js')
     return graph_html
 
 
@@ -522,14 +518,11 @@ def read_in_relevant_log_file(file_path,analysis_date=yesterday):
 					timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
 				except ValueError as e:
 					print(f"ValueError {e} on timestamp extract {timestamp_str}:{entry[1]}")
-				#print(f"{timestamp.date()} {analysis_date.date()}")
-				#quit()
 				if timestamp.date() == analysis_date.date():
 					log_entries.append((timestamp, entry[1]))
 				else:
 					ignore_record_count += 1
 		except UnicodeDecodeError as e:
-			#print(f"{Line} {len(log_entries)} {e} ")
 			pass
 	return [log_entries,skip_record_count,ignore_record_count]
 	
@@ -538,8 +531,6 @@ def filter_summary_records(log_entries):
 	filtered_log_entries = []
 	skipped_entry_count = 0
 	for line in log_entries:
-		#print(line)
-		#quit()
 		if '`' in line[1]:
 			filtered_log_entries.append(line)
 		else:
@@ -558,7 +549,6 @@ def parse_data(data):
 	# Adjust the field names and parsing logic according to your data format.
 	# Split at the backtick - before it fields split at space, after, fields split at tab
 	parts = data.split('`')
-	#print(f"{parts[0]}:{parts[1]}")
 	fields1 = parts[0].strip().split() if len(parts) > 0 else []
 	fields2 = parts[1].split('\t') if len(parts) > 1 else []
 	# then merge them
@@ -594,8 +584,6 @@ def parse_data(data):
 	except:
 		#print(f"error:len:{len(fields)}")
 		return_dict = {}  
-	#print(return_dict) 
-	#quit() 
 	return return_dict
 
 def count_entries_by_hour(log_entries):
@@ -789,16 +777,12 @@ def read_html_from_file(filepath):
 	with open(filepath, 'r', encoding='utf-8') as file:
 		html_contents = file.read()
 	print("reading from html file")
-	#print(len(html_contents))
 	# Get Filepath
 	css_path = os.path.dirname(filepath)+"/../css/mailstats.css"
-	#print(css_path)
 	# Read in CSS 
 	with open(css_path, 'r', encoding='utf-8') as file:
 		css_contents = file.read()
-	#print(len(css_contents))
 	html_contents = insert_string_after(html_contents,"\n"+css_contents,"<!--css here-->")
-	#print(len(html_contents))
 	return html_contents
 	
 def read_text_from_file(filepath):
@@ -1036,8 +1020,6 @@ if __name__ == "__main__":
 				cursor.execute(delete_query, (analysis_date,))   #Don't forget the syntactic sugar of the extra comma to make it a tuple!
 				# Get the number of records deleted
 				rows_deleted = cursor.rowcount
-				print(rows_deleted)
-				#quit()
 				if rows_deleted > 0:
 					print(f"Deleted {rows_deleted} rows for {analysis_date} ")
 			except mysql.connector.Error as e:
@@ -1073,10 +1055,6 @@ if __name__ == "__main__":
 
 	log_file = logs_dir+'current.log'
 	log_entries,skip_count,ignored_count = read_in_relevant_log_file(log_file,anaysis_date_obj)
-#	if len(log_entries) == 0:
-#		print(f"No records found in {log_file}")
-#		quit()
-#	else:
 	print(f"Found {len(log_entries)} entries in log for for {anaysis_date_obj.strftime('%Y-%m-%d')} Ignored: {ignored_count} skipped: {skip_count}")
 	summary_log_entries,skip_count = filter_summary_records(log_entries)
 	print(f"Found {len(summary_log_entries)} summary entries and skipped {skip_count} entries")
@@ -1220,7 +1198,6 @@ if __name__ == "__main__":
 						match = re.search(spam_pattern, parsed_data['spam-status'])
 						if match:
 							score = float(match.group(1))
-							#print(score,SATagLevel)
 							if score < float(SATagLevel):
 								# Accumulate allowed score (inc negatives?)
 								hamavg += score
@@ -1235,7 +1212,6 @@ if __name__ == "__main__":
 					if match:
 						score = float(match.group(1))
 						required = float(match.group(2))
-						#print(f"{parsed_data['spam-status']} / {score} {required}")
 						if score >= SARejectLevel:
 							columnCounts_2d[hour][DelSpam] += 1
 							columnCounts_2d[ColTotals][DelSpam] += 1
@@ -1251,9 +1227,7 @@ if __name__ == "__main__":
 					
 			# Count the qpsmtpd codes
 			if parsed_data['error-plugin'].strip() == 'naughty':
-				#print(f"Found naughty {parsed_data['error-msg']}")
 				if parsed_data['error-msg'].startswith("(dnsbl)"):
-					#print("Found dnsbl")
 					columnCounts_2d[hour][RBLDNS]+= 1
 					columnCounts_2d[ColTotals][RBLDNS]+= 1
 				elif parsed_data['error-msg'].startswith("(karma)"):
@@ -1272,12 +1246,9 @@ if __name__ == "__main__":
 			
 			#Now increment the column which the plugin name indicates
 			if parsed_data['action'] == '(deny)' and parsed_data['error-plugin']:
-				#print(f"Found plugin {parsed_data['error-plugin']}")
 				if parsed_data['error-plugin']:
 					row = search_2d_list(parsed_data['error-plugin'],columnPlugin)
-					#print(row,parsed_data['error-plugin'])
 					if not row == -1:
-						#print(f"Found row: {row}")
 						columnCounts_2d[hour][row] += 1
 						columnCounts_2d[ColTotals][row] += 1
 						# a few ad hoc extra extractons of data
@@ -1345,25 +1316,33 @@ if __name__ == "__main__":
 				print_progress_bar(i, log_len, prefix='Scanning for sub tables:', suffix='Complete', length=50)
 				
 			# Match initial connection message
-			match = helo_pattern.match(data[1])
-			if match:
-				ip  = match.group(1)
-				fqdn = match.group(2)
-				if is_private_ip(ip):
-					totalinternalsmtpsessions += 1
-				else:
-					totalexternalsmtpsessions += 1
+			try:
+				match = helo_pattern.match(data[1])
+				if match:
+					ip  = match.group(1)
+					fqdn = match.group(2)
+					if is_private_ip(ip):
+						totalinternalsmtpsessions += 1
+					else:
+						totalexternalsmtpsessions += 1
+					continue
+			except Exception as e:
+				print(f" Helo pattern error {e} {data[1]} {analysis_date}")
 				continue
 					
 			#Pull out Geoip countries for analysis table
-			match = geoip_pattern.match(data[1])
-			if match:
-				j += 1
-				country = match.group(1)
-				found_countries[country] += 1
-				total_countries += 1
+			try:
+				match = geoip_pattern.match(data[1])
+				if match:
+					j += 1
+					country = match.group(1)
+					found_countries[country] += 1
+					total_countries += 1
+					continue
+			except Exception as e:
+				print(f" Geoip pattern error {e} {data[1]} {analysis_date}")
 				continue
-					
+			
 			#Pull out DMARC approvals
 			match = dmarc_pattern.match(data[1])
 			if match:
@@ -1377,9 +1356,6 @@ if __name__ == "__main__":
 				connection_type_counts[connection_type] += 1
 				continue
 
-	#print(columnCounts_2d)
-	#quit()
-	
 	#Compute next and previous dates
 	day_format = "%Y-%m-%d"
 	# Convert the time string to a datetime object
@@ -1451,25 +1427,6 @@ if __name__ == "__main__":
 		cursor.close()
 		conn.close()
 	
-	# #Add in navigation html - next/previous/see in browser
-	# navigation_str_html = "<div class='linksattop'>\
-# <a class='prevlink' href='http://${DomainName}/mailstats/mailstats_for_${PreviousDate}.html'>Previous</a>\
-# <div class='divshowindex'><a class='showindex' href='http://${DomainName}/mailstats/'>Index of files</a></div>\
-# <a class='nextlink' href='http://${DomainName}/mailstats/mailstats_for_${NextDate}.html'>Next</a>\
-# </div>"
-
-	# try:
-		# template = PageTemplate(navigation_str_html)
-		# try:
-			# Nav_str = template(PreviousDate=previous_date_str,NextDate=next_date_str,TodayDate=analysis_date,DomainName=DomainName)
-		# except Exception as e:
-			# print(f"Chameleon nav template Exception {e}")
-	# except Exception as e:
-		# print(f"Chameleon nav render Exception {e}")
-	# # And insert it
-	# total_html = insert_string_after(total_html,Nav_str, "<!---Navigation here-->")
-	
-
 	# Write the rendered HTML to a file
 	output_path = html_page_dir+'mailstats_for_'+analysis_date
 	output_path = output_path.replace(' ','_')
