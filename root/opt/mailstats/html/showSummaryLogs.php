@@ -75,6 +75,7 @@ function generateLogDataTable($logData) {
     $values = array_values($mergedData);
     
     $output = '<table class="stripes" style="border-collapse: collapse; width:95%;overflow-x:auto; margin: 0.6% auto 0.6% auto;"><tbody>';
+    #$output = '<table class="stripes" style="border-collapse: collapse; width:95%;overflow-x:auto; margin:2%"><tbody>';
 
     // Divide keys and values into sets of 6
     $chunks = array_chunk($keys, 6);
@@ -90,7 +91,12 @@ function generateLogDataTable($logData) {
         }
         $output .= '</tr><tr>';
         foreach ($chunk as $i => $key) {
-            $output .= '<td>' . htmlspecialchars($values[$chunkIndex * 6+ $i]) . '</td>';
+			$val = htmlspecialchars($values[$chunkIndex * 6+ $i]);
+			if ($key == 'id'){
+				$output .= '<td>' . "<a href='./ShowDetailedLogs.php?id=".$val."'</a>".$val."</td>";
+			} else {
+				$output .= '<td>' . $val . '</td>';
+			}
         }
         $output .= '</tr>';
     }
