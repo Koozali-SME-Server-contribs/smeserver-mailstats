@@ -1120,6 +1120,9 @@ if __name__ == "__main__":
 			hour = dt.hour
 			# parse the data
 			parsed_data = parse_data(data)
+			#Take out the mailstats email
+			if 'mailstats' in parsed_data['from-email'] and DomainName in parsed_data['from-email']:
+				continue
 			# Save the data here if necessary
 			if saveData:
 				save_summaries_to_db(anaysis_date_obj.strftime('%Y-%m-%d'),hour,parsed_data)
