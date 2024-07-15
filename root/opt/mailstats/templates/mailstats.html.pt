@@ -43,7 +43,7 @@
 			<div class='divshowindex'><a class='showindex' href='http://${DomainName}/mailstats/'>Index of files</a></div>
 			<a class='nextlink' href='http://${DomainName}/mailstats/mailstats_for_${NextDate}.html'>Next</a></div> <!--format important here - used to insert see in browser for email -->
     <br />
-    <h2>${title}</h2>
+    <h2>${structure:title}</h2>
     <br />
     <div class="headerpanel">
 		<div class = "innerheaderpanel">

@@ -951,7 +951,7 @@ if __name__ == "__main__":
 
 	DomainName = get_value(ConfigDB, "DomainName", "type") 							#'bjsystems.co.uk' #  $cdb->get('DomainName')->value;
 	
-	hello_string = "Mailstats:"+Mailstats_version+' for '+DomainName+" at "+formatted_datetime+" for "+analysis_date
+	hello_string = "Mailstats:"+Mailstats_version+' for '+DomainName+" for "+analysis_date+" Printed at:"+formatted_datetime
 	print(hello_string)
 	version_string = "Chameleon:"+chameleon_version+" Python:"+python_version
 	if isThonny:
@@ -1383,13 +1383,17 @@ if __name__ == "__main__":
 	# Load the template
 	with open(template_path, 'r') as template_file:
 		template_content = template_file.read()
+	#Use the hello string to create a suitable heading for the web page
+	html_title = hello_string.replace("Printed at"," <span class='greyed-out'>Printed at")
+	html_title += "</span>"
+	
 	# Create a Chameleon template instance
 	try:
 		template = PageTemplate(template_content)
 		# Render the template with the 2D array data and column headers
 		try:
 			rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, 
-										reporting_date=analysis_date, title=hello_string, 
+										reporting_date=analysis_date, title=html_title, 
 										version=version_string,
 										nolinks=nolinks,
 										stacked_bar_graph=stacked_Bar_html,
