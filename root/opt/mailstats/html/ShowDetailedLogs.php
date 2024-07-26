@@ -22,6 +22,28 @@ function process_file($file_path, $input_param) {
     }
     fclose($file);
 }
+
+function tai64nToDate($tai64n) {
+    // Check if the input TAI64N string is valid
+    if (preg_match('/^@([0-9a-f]{8})([0-9a-f]{8})$/', $tai64n, $matches)) {
+        // First part: seconds since epoch
+        $sec_hex = $matches[1];
+        // Second part: nanoseconds in hex
+        $nsec_hex = $matches[2];
+
+        // Convert hex to decimal
+        $seconds = hexdec($sec_hex);
+        $nanoseconds = hexdec($nsec_hex);
+        
+        // Calculate the full timestamp in seconds
+        $timestamp = $seconds + ($nanoseconds / 1e9);  // Nanoseconds to seconds
+        
+        // Format timestamp to 'Y-m-d H:i:s'
+        return date('Y-m-d H:i:s', $timestamp);
+    } else {
+        throw new InvalidArgumentException("Invalid TAI64N format.");
+    }
+}
 chdir($directory);
 foreach ($files as $file) {
     process_file($file, $input_param);
