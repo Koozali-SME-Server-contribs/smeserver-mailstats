@@ -12,20 +12,6 @@ Release: %{release}%{?dist}
 License: GPL
 Group: SME/addon
 Source: %{name}-%{version}.tgz
-Patch0: smeserver-mailstats-1.1-random-cron_and_spamfilter-stats-7-update.patch
-Patch1: smeserver-mailstats-1.1.bz8957.Create_the_mailstats_user.patch
-Patch2: smeserver-mailstats-1.1.bz8656.Spamassassin_scores_and_tags.patch
-Patch3: smeserver-mailstats-1.0-628.patch
-Patch4: smeserver-mailstats-1.1.bz9588.qpsmtpd0_96compatible.patch
-Patch5: smeserver-mailstats-1.1.bz9717-9716email_specific_stats.patch
-Patch6: smeserver-mailstats-1.1.bz9888.geoip.patch
-Patch7: smeserver-mailstats-1.1.bz10858_10327.cleanup_and_email_truncate.patch
-Patch8: smeserver-mailstats-1.1-uninitialised-variable-on-no-data
-Patch9: smeserver-mailstats-1.1-Clear-up-uninitialsed-use-of-lc.patch
-Patch10:smeserver-mailstats-1.1-Add-Update-event-to-createlinks.patch
-Patch11:smeserver-mailstats-1.1-Take-out-dot-in-cron-file-and-also-re-direct-errors-to-syslog.patch
-Patch12:smeserver-mailstats-1.1-bz12327-Add-in-imap-authorisation-log-string.patch
-Patch13:smeserver-mailstats-1.1-Pull-in-python-rewrite-from-sme11-dev.patch
 
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-buildroot
 BuildArchitectures: noarch
@@ -37,6 +23,7 @@ BuildRequires:  python36
 Requires:       python36
 Requires:		html2text
 Requires:		python3-chameleon
+Requires:       python3-mysql
 AutoReqProv: no
 
 %description
@@ -116,20 +103,6 @@ See http://www.contribs.org/bugzilla/show_bug.cgi?id=819
 
 %prep
 %setup
-%patch0 -p1 
-%patch1 -p1
-%patch2 -p1
-%patch3 -p1
-%patch4 -p1
-%patch5 -p1
-%patch6 -p1
-%patch7 -p1
-%patch8 -p1
-%patch9 -p1
-%patch10 -p1
-%patch11 -p1
-%patch12 -p1
-%patch13 -p1
 
 %build
 perl createlinks
