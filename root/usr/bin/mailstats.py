@@ -61,6 +61,7 @@
 #
 # dnf install python3-chameleon --enablerepo=epel
 # dnf install html2text --enablerepo=epel
+# pip3 install mysql-connector-python
 #
 #
 from datetime import datetime, timedelta
