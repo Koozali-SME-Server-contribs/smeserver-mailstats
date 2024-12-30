@@ -61,7 +61,10 @@
 #
 # dnf install python3-chameleon --enablerepo=epel
 # dnf install html2text --enablerepo=epel
-# pip3 install mysql-connector-python
+# pip3 install numpy
+# pip3 pymysql
+# pip3 install plotly
+# pip3 install pandas
 #
 #
 from datetime import datetime, timedelta
@@ -79,11 +82,13 @@ from email.mime.text import MIMEText
 import codecs
 import argparse
 import tempfile
-import mysql.connector
+#import mysql.connector
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 import colorsys
+import pymysql
+import json
 
 Mailstats_version = '1.2'
 build_date_time = "2024-06-18 12:03:40OURCE" 
@@ -124,8 +129,6 @@ PERCENT = TOTALS + 1
 ColTotals = 24
 ColPercent = 25
 
-import mysql.connector
-import json
 
 def sanitize_and_filter_data_for_stacked_bar(data2d, xLabels, yLabels, exclude_columns_labels, exclude_rows_labels):
     """
@@ -501,6 +504,10 @@ def read_in_relevant_log_file(file_path,analysis_date=yesterday):
 	log_entries = []
 	skip_record_count = 0
 	ignore_record_count = 0
+	# Get the year of yesterday
+	yesterday = datetime.now() - timedelta(days=1)
+	yesterday_year = yesterday.year
+
 	with codecs.open(file_path, 'rb','utf-8', errors='replace') as file:
 		try:
 			for Line in file:
@@ -508,7 +515,8 @@ def read_in_relevant_log_file(file_path,analysis_date=yesterday):
 				try:
 					entry = split_timestamp_and_data(Line)
 					# compare with anal date
-					timestamp_str = truncate_microseconds(entry[0])
+					timestamp_str = entry[0]; #truncate_microseconds(entry[0])
+					#print(f"Timestamp:{timestamp_str}")
 				except ValueError as e:
 					#print(f"ValueError {e} on timestamp create {timestamp_str}:{entry[0]} {entry[1]}")
 					skip_record_count += 1
@@ -516,9 +524,12 @@ def read_in_relevant_log_file(file_path,analysis_date=yesterday):
 				# Parse the timestamp string into a datetime object
 				# Ignoring extra microseconds 
 				try:
-					timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+					timestamp = datetime.strptime(timestamp_str, "%b %d %H:%M:%S")
+					# and add in gthe year of yesterday
+					timestamp = timestamp.replace(year=yesterday_year)
 				except ValueError as e:
 					print(f"ValueError {e} on timestamp extract {timestamp_str}:{entry[1]}")
+				#print(f"Stamps: {timestamp.date()} {analysis_date.date()}")
 				if timestamp.date() == analysis_date.date():
 					log_entries.append((timestamp, entry[1]))
 				else:
@@ -716,14 +727,17 @@ def split_timestamp_and_data(log_entry: str) -> list:
 	:return: A list with two entries: [timestamp, rest_of_data].
 	"""
 	# The timestamp is always the first part, up to the first space after the milliseconds
-	parts = log_entry.split(' ', 2)
-	
-	if len(parts) < 3:
-		raise ValueError(f"The log entry format is incorrect {parts}")
-	
-	timestamp = ' '.join(parts[:2])
-	rest_of_data = parts[2]
-	return [timestamp, rest_of_data]
+	# SME11 - the timestamp looks like this: "Dec 29 07:42:00 sme11 qpsmtpd-forkserver[942177]:<the rest>"
+	#
+	match = re.match(r'(\w{3} \d{1,2} \d{2}:\d{2}:\d{2}) (.+)', log_entry)
+	if match:
+		timestamp = match.group(1)
+		rest_of_line = match.group(2).strip()  # Strip any leading spaces
+	else:
+		timestamp = None
+		rest_of_line = log_entry  # If no match, return the whole line
+	#print(f"ts:{timestamp}")
+	return [timestamp, rest_of_line]
 	
 def render_sub_table(table_title,table_headers,found_values,get_character=None):
 	# Get the total
