@@ -6,7 +6,7 @@ Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
 %define version 1.1
-%define release 18
+%define release 19
 Version: %{version}
 Release: %{release}%{?dist}
 License: GPL
@@ -31,6 +31,9 @@ A script that via cron.d e-mails mail statistics to admin on a daily basis.
 See http://www.contribs.org/bugzilla/show_bug.cgi?id=819
 
 %changelog
+* Mon Dec 30 2024 Brian Read <brianr@koozali.org> 1.1-19.sme
+- Update mailstats.pl to accomodate change in log format for SME11 [SME: ]
+
 * Fri Jun 07 2024 Brian Read <brianr@koozali.org> 1.1-18.sme
 - Pull in python re-write from SME11 dev [SME: ]
 

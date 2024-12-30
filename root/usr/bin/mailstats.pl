@@ -33,6 +33,7 @@ use strict;
 # bjr - 18Oct20 - Alter use of lc to avoid uninitialised messages - bug 11044
 # bjr - 02Apr21 - Fix up lc to try to avoif uninit messages - and alter warning status - bug 11519
 # bjr - 15Feb23 - Add in auth::auth_imap after change to use dovecot as incoming authorisation Bugzilla 12327
+# bjr - 29Dec24 - Convert to SME11 log date format
 #
 #############################################################################
 #
@@ -70,6 +71,11 @@ use strict;
 #
 
 # internal modules (part of core perl distribution)
+#
+# New format for SME11
+#
+#Dec 17 19:34:34 sme11 qpsmtpd-forkserver[441318]: 441318 (deny) logging::logterse: ` 192.168.1.4	pc-00004.thereadclan.me.uk	bjsystems.co.uk	<biodiversityadvanced@bjsystems.co.uk>		check_goodrcptto	901	relaying denied smeserver@thereadclan.me.uk	msg denied before queued
+
 use strict;
 use warnings;
 use Getopt::Long;
@@ -105,7 +111,7 @@ if ($cdb->get('mailstats')){
 
 #Configuration section
 my %opt = (
-    version => '0.7.16',                        # please update at each change.
+    version => '0.8.01',                        # please update at each change.
     debug => 0,                                 # guess what ?
     sendmail => '/usr/sbin/sendmail',           # Path to sendmail stub
     from => 'spamfilter-stats',                 # Who is the mail from
@@ -370,17 +376,30 @@ my $makeHTMLpage = "no";
 
 
 # Init the hashes
-my $nhour = floor( $start / 3600 );
+my $nhour = 0; 
+#print "Hour:".$nhour."\n";
 my $ncateg;
-while ( $nhour < $end / 3600 ) {
-      $counts{$nhour}=();
-    $ncateg = 0;
-    while ( $ncateg < @categs) {
-      $counts{$nhour}{$categs[$ncateg-1]} = 0;
-      $ncateg++
+while ( $nhour < 24 ) {
+    $counts{$nhour} = {};  # Initialize as a hash reference
+	#print "Hour:".$nhour."\n";
+    my $ncateg = 0;        # Reset $ncateg for each hour
+    
+    while ( $ncateg < @categs ) {
+        $counts{$nhour}{$categs[$ncateg]} = 0;  # Corrected index
+        $ncateg++;  # Increment $ncateg
     }
-    $nhour++;
+    $nhour++;  # Increment $nhour
 }
+
+#while ( $nhour < $end / 3600 ) {
+      #$counts{$nhour}=();
+    #$ncateg = 0;
+    #while ( $ncateg < @categs) {
+      #$counts{$nhour}{$categs[$ncateg-1]} = 0;
+      #$ncateg++
+    #}
+    #$nhour++;
+#}
 # and grand totals, percent and display status from db entries, and column widths
 $ncateg = 0;
 my $colpadding = 0;
@@ -402,8 +421,17 @@ while ( $ncateg < @categs) {
   $ncateg++
 }
 
-my $starttai = Time::TAI64::unixtai64n($start);
-my $endtai = Time::TAI64::unixtai64n($end);
+#foreach my $hour (sort keys %counts) {
+    #printf "Hour: %2d\n", $hour;  # Right-aligned hour
+    #foreach my $categ (sort keys %{ $counts{$hour} }) {
+        #printf "  %-12s: %d\n", $categ, $counts{$hour}{$categ};  # Left-aligned category
+    #}
+#}
+
+#die("die");
+
+#my $starttai = Time::TAI64::unixtai64n($start);
+#my $endtai = Time::TAI64::unixtai64n($end);
 my $sum_SARules = 0;
 
 # we remove non valid files
@@ -424,13 +452,23 @@ my $count = -1; #for loop reduction in debugging mode
 my $CurrentMailId = "";
 
 LINE: while (<>) {
+	chomp;
 
-    next LINE if !(my($tai,$log) = split(' ',$_,2));
+    # Use a regex to extract the date, time, and the rest of the log
+    if (/^(\w+\s+\d+\s+\d{2}:\d{2}:\d{2})\s+\S+\s+\S+\[(\d+)\]:\s+(.*)/) {
+        my $datetime = $1;  # Get the date and time
+        my $log_id = $2;     # Get the log ID
+        my $log_entry = $3;  # The rest of the log line
 
-    
-    #If date specified, only process lines matching date
-    next LINE if ( $tai lt $starttai );
-    next LINE if ( $tai gt $endtai );
+        # Convert datetime to epoch
+        my $current_epoch = convert_to_epoch($datetime);
+
+        # If date specified, only process lines matching date
+        #print $datetime." ".$current_epoch." ".$start." ".$end."\n";
+        next LINE if ($current_epoch < $start);
+        next LINE if ($current_epoch > $end);
+
+        #print $datetime."\n";
 
 		#Count lines and skip out if debugging
 		$count++;
@@ -493,20 +531,36 @@ LINE: while (<>) {
     #only select Logterse output
     next LINE unless m/logging::logterse:/;
 
-    my $abstime = Time::TAI64::tai2unix($tai);
-    my $abshour = floor( $abstime / 3600 );    # Hours since the epoch
+    #my $abstime = Time::TAI64::tai2unix($tai);
+    #my $abshour = floor( $abstime / 3600 );    # Hours since the epoch
+    
+    # Create a timestamp for the previous hour
+	my $previous_hour_epoch = $current_epoch - 3600;  # Subtract 3600 seconds (1 hour)
+
+	# Convert epoch time to local time
+	my ($sec, $min, $hour) = localtime($previous_hour_epoch);
+	#print $sec." ".$min." ".$hour."\n";
+	$hour = ($hour==23)?0:$hour;
+	my $abshour = $hour+1;
+	#print "Abs:".$abshour."\n";
 
 
     my ($timestamp_part, $log_part) = split('`',$_,2);  #bjr 0.6.12
     my (@log_items) = split $FS, $log_part;
+    #print "0".$log_items[0]."\n";
+    #print "1".$log_items[1]."\n";
+    #print "5".$log_items[5]."\n";
+    #print "7".$log_items[7]."\n";
 
     my (@timestamp_items) = split(' ',$timestamp_part);
+	#print  $timestamp_items[5];
+	#print "\n";
     
-		my $result= "rejected";  #Tag as rejected unti we know otherwise
+	my $result= "rejected";  #Tag as rejected unti we know otherwise
     # we store the more recent recipient domain, for domain statistics
     # in fact, we only store the first recipient. Could be sort of headhache
     # to obtain precise stats with many recipients on more than one domain !
-    my $proc = $timestamp_items[1] ;  #numeric Id for the email
+    my $proc = $timestamp_items[5] ;  #numeric Id for the email
     my $emailnum = $proc; #proc gets modified later...
 
     if ($emailnum == 23244) {
@@ -716,22 +770,24 @@ LINE: while (<>) {
 						#extract the spam score
 						# Remove count for rejectred as it looks as if it might get through!!
 						$result= "queued";
-						if ($log_items[8] =~ ".*score=([+-]?\\d+\.?\\d*).* required=([0-9\.]+)") {
-							$score = trim($1);
-							if ($score =~ /^[+-]?\d+\.?\d*$/ ) #check its numeric 
-							{
-								if ($score < $SATagLevel) { $hamcount++;$counts{$abshour}{$CATHAM}++;$hamavg += $score;}
-								else {$spamcount++;$counts{$abshour}{$CATSPAM}++;$spamavg += $score;$result= "spam";}
+						if (defined($log_items[8])){
+							if ($log_items[8] =~ ".*score=([+-]?\\d+\.?\\d*).* required=([0-9\.]+)") {
+								$score = trim($1);
+								if ($score =~ /^[+-]?\d+\.?\d*$/ ) #check its numeric 
+								{
+									if ($score < $SATagLevel) { $hamcount++;$counts{$abshour}{$CATHAM}++;$hamavg += $score;}
+									else {$spamcount++;$counts{$abshour}{$CATSPAM}++;$spamavg += $score;$result= "spam";}
+								} else {
+									print "Unexpected non numeric found in $proc:".$log_items[8]."($score)\n";
+								}
 							} else {
-								print "Unexpected non numeric found in $proc:".$log_items[8]."($score)\n";
+								# no SA score - treat it as ham
+								$hamcount++;$counts{$abshour}{$CATHAM}++;
 							}
-						} else {
-							# no SA score - treat it as ham
-							$hamcount++;$counts{$abshour}{$CATHAM}++;
-						}
-						if ( ( $currentrcptdomain{ $proc } || '' ) ne '' ) {
-										$byrcptdomain{ $currentrcptdomain{ $proc } }{ 'accept' }++ ;
-										$currentrcptdomain{ $proc } = '' ;
+							if ( ( $currentrcptdomain{ $proc } || '' ) ne '' ) {
+											$byrcptdomain{ $currentrcptdomain{ $proc } }{ 'accept' }++ ;
+											$currentrcptdomain{ $proc } = '' ;
+							}
 						}
 		}
 
@@ -822,12 +878,16 @@ LINE: while (<>) {
 			}
 		}
    #exit if $emailnum == 15858;
+   #print "Counts:*$abshour* ".$counts{$abshour}{$CATNONCONF}."\n";
+
+;
    
+	} # end of if regexp
 }  #END OF MAIN LOOP
 
 #total up grand total Columns
-$nhour = floor( $start / 3600 );
-while ( $nhour < $end / 3600 ) {
+$nhour = 0;
+while ( $nhour < 24 ) {
     $ncateg = 0; #past the where it came from columns
     while ( $ncateg < @categs) {
       #total columns
@@ -846,8 +906,8 @@ while ( $nhour < $end / 3600 ) {
 
 
 #Compute row totals and row percentages
-$nhour = floor( $start / 3600 );
-while ( $nhour < $end / 3600 ) {
+$nhour = 0; #floor( $start / 3600 );
+while ( $nhour < 24 ){ #}$end / 3600 ) {
   $counts{$nhour}{$categs[@categs-1]} =  $counts{$nhour}{$categs[@categs-2]}*100/$totalexamined if $totalexamined;
   $nhour++;
 
@@ -865,8 +925,8 @@ while ( $nhour < $end / 3600 ) {
     }
 
 #compute sum of row percentages
-$nhour = floor( $start / 3600 );
-while ( $nhour < $end / 3600 ) {
+$nhour = 0; #floor( $start / 3600 );
+while ( $nhour < 24 ){ #}$end / 3600 ) {
   $counts{$GRANDTOTAL}{$categs[@categs-1]} += $counts{$nhour}{$categs[@categs-1]};
   $nhour++;
 
@@ -995,15 +1055,15 @@ if ( !$disabled ) {
     my $Totals;            #Corresponding totals
     my $Percent;           # and column percentages
 
-    my $hour = floor( $start / 3600 );
+    my $hour = 0; #floor( $start / 3600 );
     $Line1 = '';
     $Line2 = '';
     $Titles = '';
     $Values = '';
     $Totals = '';
     $Percent = '';
-    while ( $hour < $end / 3600 ) {
-         if ($hour == floor( $start / 3600 )){
+    while ( $hour < 24){ #}$end / 3600 ) {
+         if ($hour == 0){ #}floor( $start / 3600 )){
             #Do all the once only things
              $ncateg = 0;
             while ( $ncateg < @categs) {
@@ -1289,13 +1349,16 @@ sub analysis_period {
         $sec=0;$min=0;$hour=$base;
       };
       #$mday="05"; #$mday="03"; #$mday="16"; #Temp!!
+      #print $sec." ".$min." ".$hour." ".$mday." ".$mon." ".$year." ".$wday." ".$yday."\n";
       $time = timelocal($sec,$min,$hour,$mday,$mon,$year);
+      #print $time."\n"
     }
     
     my $start = str2time( $startdate );
     my $end   = $enddate ? str2time( $enddate ) :
      	$startdate ? $start + $secsininterval : $time;
     $start = $startdate ? $start : $end - $secsininterval;
+    #print "Analysis".$start." ".$end;
     return ( $start > $end ) ? ( $end, $start ) : ( $start, $end );
 }
 
@@ -1667,7 +1730,7 @@ sub save_data
         "mailstats", "mailstats" )
       or die "Cannot open mailstats db - has it beeen created?";
 
-    my $hour = floor( $start / 3600 );
+    my $hour = 0; #floor( $start / 3600 );
     my $reportdate = strftime( "%F", localtime( $hour * 3600 ) );
     my $dateid = get_dateid($dbh,$reportdate);
     my $reccount = 0;           #count number of records written
@@ -1740,9 +1803,9 @@ sub save_data
 	}
     # finally  - the hourly breakdown
     # need to remember here that the date might change during the 24 hour span
-    my $nhour = floor( $start / 3600 );
+    my $nhour = 0; #floor( $start / 3600 );
 	my $ncateg;
-	while ( $nhour < $end / 3600 ) {
+	while ( $nhour < 24){ #}$end / 3600 ) {
         #see if the time record has been created
  #       print strftime("%H",localtime( $nhour * 3600 ) ).":00:00\n";
 	    my $sth =
@@ -1891,10 +1954,32 @@ sub get_dateid
 	#} else { return 0}
 #}
 
+sub convert_to_epoch {
+
+    my ($sec, $min, $hour1, $mday, $mon, $year) = localtime();
+    $year += 1900;  # localtime returns year as years since 1900
+
+    my ($datetime) = @_;
+    my ($month, $day, $time) = split(' ', $datetime);
+    my ($hour, $minute, $second) = split(':', $time);
+
+    my $month_num = {
+        Jan => 0, Feb => 1, Mar => 2, Apr => 3,
+        May => 4, Jun => 5, Jul => 6, Aug => 7,
+        Sep => 8, Oct => 9, Nov => 10, Dec => 11,
+    }->{$month};
+    
+
+    return timelocal($second, $minute, $hour, $day, $month_num, $year);  # Adjust the year as necessary
+}
+
+
 
 sub test_for_private_ip {
      use NetAddr::IP;
      $_ = shift;
+     # Remove leading whitespace
+	 s/^\s+//;
      return unless /(\d+\.\d+\.\d+\.\d+)/;
      my $ip = NetAddr::IP->new($1);
      return unless $ip;
