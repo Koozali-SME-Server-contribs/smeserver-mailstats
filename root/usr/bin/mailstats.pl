@@ -1090,10 +1090,11 @@ if ( !$disabled ) {
         }
 
         $ncateg = 0;
+        my $table_start_time = $start;
         while ( $ncateg < @categs) {
           if ($finaldisplay[$ncateg]){
               if ($ncateg == 0) {
-                $Values .= strftime( "%F, %H", localtime( $hour * 3600 ) )." "
+                $Values .= strftime( "%F, %H", localtime( $table_start_time + $hour * 3600 ) )." "
               } elsif ($ncateg == @categs-1) {
                 #percentages in last column
                 $Values .= sprintf('%'.($colwidth[$ncateg]-2).'.1f',$counts{$hour}{$categs[$ncateg]})."%";

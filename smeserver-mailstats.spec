@@ -32,7 +32,7 @@ See http://www.contribs.org/bugzilla/show_bug.cgi?id=819
 
 %changelog
 * Mon Dec 30 2024 Brian Read <brianr@koozali.org> 1.1-19.sme
-- Update mailstats.pl to accomodate change in log format for SME11 [SME: ]
+- Update mailstats.pl to accomodate change in log format for SME11 [SME: 12841]
 
 * Fri Jun 07 2024 Brian Read <brianr@koozali.org> 1.1-18.sme
 - Pull in python re-write from SME11 dev [SME: ]
