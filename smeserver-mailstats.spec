@@ -123,14 +123,14 @@ sed -i "s|__BUILD_DATE_TIME__|$now|" $RPM_BUILD_ROOT/usr/bin/mailstats.py
 /bin/rm -f %{name}-%{version}-filelist
 /sbin/e-smith/genfilelist $RPM_BUILD_ROOT | grep -v "\.pyc" | grep -v "\.pyo"  > %{name}-%{version}-filelist
 
-pip3 pymysql
-pip3 numpy
-pip3 ploty
-pip3 pandas
+%pre
+/usr/bin/pip3 install pymysql
+/usr/bin/pip3 install numpy
+/usr/bin/pip3 install plotly
+/usr/bin/pip3 install pandas
 
 %clean
 /bin/rm -rf $RPM_BUILD_ROOT
 
 %files -f %{name}-%{version}-filelist
 %defattr(-,root,root)
-
