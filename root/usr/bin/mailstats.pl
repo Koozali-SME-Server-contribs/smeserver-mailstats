@@ -535,14 +535,14 @@ LINE: while (<>) {
     #my $abshour = floor( $abstime / 3600 );    # Hours since the epoch
     
     # Create a timestamp for the previous hour
-	my $previous_hour_epoch = $current_epoch - 3600;  # Subtract 3600 seconds (1 hour)
+	my $previous_hour_epoch = $current_epoch; # - 3600;  # Subtract 3600 seconds (1 hour)
 
 	# Convert epoch time to local time
 	my ($sec, $min, $hour) = localtime($previous_hour_epoch);
 	#print $sec." ".$min." ".$hour."\n";
-	$hour = ($hour==23)?0:$hour;
-	my $abshour = $hour+1;
-	#print "Abs:".$abshour."\n";
+	#$hour = ($hour==23)?0:$hour;
+	my $abshour = $hour;
+	#print "Abs:".$abshour." ".strftime('%Y-%m-%dT%H:%M:%SZ',gmtime($previous_hour_epoch))."\n";
 
 
     my ($timestamp_part, $log_part) = split('`',$_,2);  #bjr 0.6.12

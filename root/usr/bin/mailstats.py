@@ -565,7 +565,7 @@ def parse_data(data):
 	fields2 = parts[1].split('\t') if len(parts) > 1 else []
 	# then merge them
 	fields = fields1 + fields2
-#	if fields[4] == 'localhost':
+#	if fields[4] == ''local'host':
 #		i = 0
 #		print(f"len:{len(fields)}")
 #		for part in fields:
@@ -575,37 +575,39 @@ def parse_data(data):
 	# and mapping:
 	try:
 		return_dict = {
-			'id': fields[0].strip() if len(fields) > 0 else None,
-			'action': fields[1].strip() if len(fields) > 1 else None,
-			'logterse': fields[2].strip() if len(fields) > 2 else None,
-			'ip': fields[3].strip() if len(fields) > 3 else None,
-			'sendurl': fields[4].strip() if len(fields) > 4 else None,     #1
-			'sendurl1': fields[5].strip() if len(fields) > 5 else None,    #2
-			'from-email': fields[6].strip() if len(fields) > 6 else None,  #3
-			'error-reason': fields[6].strip() if len(fields) > 6 else None, #3
-			'to-email': fields[7].strip() if len(fields) > 7 else None,		#4
-			'error-plugin': fields[8].strip() if len(fields) > 8 else None,  #5
-			'action1': fields[8].strip() if len(fields) > 8 else None,       #5
-			'error-number' : fields[9].strip() if len(fields) > 9 else None, #6
-			'sender': fields[10].strip() if len(fields) > 10 else None,      #7
-			'error-msg' :fields[10].strip() if len(fields) > 10 else None,   #7
-			'spam-status': fields[11].strip() if len(fields) > 11 else None, #8 
-			'error-result': fields[11].strip() if len(fields) > 11 else None,#8
+			'sme': fields[0].strip() if len(fields) > 0 else None,
+			'qpsmtpd': fields[1].strip() if len(fields) > 1 else None,
+			'id': fields[2].strip() if len(fields) > 2 else None,
+			'action': fields[3].strip() if len(fields) > 3 else None,
+			'logterse': fields[4].strip() if len(fields) > 4 else None,
+			'ip': fields[5].strip() if len(fields) > 5 else None,
+			'sendurl': fields[6].strip() if len(fields) > 6 else None,     #1
+			'sendurl1': fields[7].strip() if len(fields) > 7 else None,    #2
+			'from-email': fields[8].strip() if len(fields) > 8 else None,  #3
+			'error-reason': fields[8].strip() if len(fields) > 8 else None, #3
+			'to-email': fields[9].strip() if len(fields) > 9 else None,		#4
+			'error-plugin': fields[10].strip() if len(fields) > 10 else None,  #5
+			'action1': fields[10].strip() if len(fields) > 10 else None,       #5
+			'error-number' : fields[11].strip() if len(fields) > 11 else None, #6
+			'sender': fields[12].strip() if len(fields) > 12 else None,      #7
+			'error-msg' :fields[12].strip() if len(fields) > 12 else None,   #7
+			'spam-status': fields[13].strip() if len(fields) > 13 else None, #8 
+			'error-result': fields[13].strip() if len(fields) > 13 else None,#8
 			# Add more fields as necessary
 		}
 	except:
-		#print(f"error:len:{len(fields)}")
+		print(f"error:len:{len(fields)}")
 		return_dict = {}  
 	return return_dict
 
-def count_entries_by_hour(log_entries):
-	hourly_counts = defaultdict(int)
-	for entry in log_entries:
-		# Extract hour from the timestamp
-		timestamp = entry['timestamp']
-		hour = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H')
-		hourly_counts[hour] += 1
-	return hourly_counts
+# def count_entries_by_hour(log_entries):
+	# hourly_counts = defaultdict(int)
+	# for entry in log_entries:
+		# # Extract hour from the timestamp
+		# timestamp = entry['timestamp']
+		# hour = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H')
+		# hourly_counts[hour] += 1
+	# return hourly_counts
 
 def initialize_2d_array(num_hours, column_headers_len,reporting_date):
 	num_hours += 1  # Adjust for the zeroth hour
@@ -947,7 +949,7 @@ if __name__ == "__main__":
 		datetime.strptime(analysis_date, '%Y-%m-%d')
 	except ValueError:
 		print("Specify a valid date (yyyy-mm-dd) for the analysis")
-		quit()
+		(quit)()
 
 	anaysis_date_obj = datetime.strptime(analysis_date, '%Y-%m-%d')
 	noemailfile = args.emailfile.lower()  == 'n'
@@ -1133,8 +1135,10 @@ if __name__ == "__main__":
 			# Parse the timestamp string into a datetime object
 			dt = timestamp
 			hour = dt.hour
+			#print(f"Abs:{hour} {timestamp}")
 			# parse the data
 			parsed_data = parse_data(data)
+			#print(f"{parsed_data}")
 			#Take out the mailstats email
 			if 'mailstats' in parsed_data['from-email'] and DomainName in parsed_data['from-email']:
 				continue
@@ -1150,9 +1154,11 @@ if __name__ == "__main__":
 			#Total totals
 			columnCounts_2d[ColTotals][TOTALS] += 1
 			
-			# first spot the fetchmail and local deliveries.
+			# first spot the fetchmail and 'local' deliveries.
 			#Local send
+			#print(f"{DomainName} {parsed_data['sendurl']}")
 			if DomainName in parsed_data['sendurl']:
+				#print(f"{DomainName} {parsed_data['sendurl']}")
 				columnCounts_2d[hour][Local] += 1
 				columnCounts_2d[ColTotals][Local] += 1
 			#Relay or webmail
