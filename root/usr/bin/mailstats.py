@@ -902,8 +902,8 @@ def get_heading():
 				 f"Internal SMTP connections accepted: {totalinternalsmtpsessions}"
 
 	if len(connection_type_counts)>0:
-		for connect_type in connection_type_counts.keys():
-			smtp_stats = smtp_stats + f"\nCount of {connection_type} connections:{connection_type_counts[connect_type]}"
+		for connection_type in connection_type_counts.keys():
+			smtp_stats += f"\nCount of {connection_type} connections: {connection_type_counts[connection_type]}"
 
 	smtp_stats = smtp_stats + f"\nEmails per hour: {emailperhour:.1f}/hr\n"\
 				 f"Average spam score (accepted): {spamavg or 0:.2f}\n"\
@@ -1122,6 +1122,10 @@ if __name__ == "__main__":
 	rejectspamavg = 0
 	DMARCSendCount = 0
 	totalexamined = 0
+	total_qpsmtpd = 0
+	total_sqpsmtpd = 0
+	total_uqpsmtpd = 0
+	
 	if sorted_len > 0:
 		if isThonny:
 			# Initial call to print the progress bar
@@ -1135,9 +1139,10 @@ if __name__ == "__main__":
 			# Parse the timestamp string into a datetime object
 			dt = timestamp
 			hour = dt.hour
-			#print(f"Abs:{hour} {timestamp}")
 			# parse the data
 			parsed_data = parse_data(data)
+			#if hour == 15:
+			#	print(f"Abs:{hour} {timestamp} {parsed_data['sendurl']} {parsed_data['from-email']}")
 			#print(f"{parsed_data}")
 			#Take out the mailstats email
 			if 'mailstats' in parsed_data['from-email'] and DomainName in parsed_data['from-email']:
@@ -1145,6 +1150,14 @@ if __name__ == "__main__":
 			# Save the data here if necessary
 			if saveData:
 				save_summaries_to_db(anaysis_date_obj.strftime('%Y-%m-%d'),hour,parsed_data)
+			#Count the number of emails through each of qpsmtpd, uqpsmtpd and sqpsmtpd
+			# the forkserver column in the log indicates it.
+			if parsed_data['qpsmtpd'].startswith ('qpsmtpd'):
+				total_qpsmtpd +=1
+			elif parsed_data['qpsmtpd'].startswith ('sqpsmtpd'):
+				total_sqpsmtpd += 1
+			elif parsed_data['qpsmtpd'].startswith ('uqpsmtpd'):
+				total_uqpsmtpd +=1
 			# Increment Count in which headings it falls
 			#Hourly count and column total
 			columnCounts_2d[hour][Hour] += 1
@@ -1330,7 +1343,9 @@ if __name__ == "__main__":
 	i = 0
 	j = 0
 	log_len = len(log_entries)
-	connection_type_counts = defaultdict(int)
+	#connection_type_counts = defaultdict(int)
+	connection_type_counts = {"qpsmtp":total_qpsmtpd,"sqpsmtp":total_sqpsmtpd,"uqpsmtp":total_uqpsmtpd}
+	print(f"Con:{connection_type_counts}")
 	if log_len > 0:
 		if isThonny:
 			print_progress_bar(0, log_len, prefix='Progress:', suffix='Complete', length=50)
@@ -1422,7 +1437,7 @@ if __name__ == "__main__":
 										line_graph=line_graph_html,
 										PreviousDate=previous_date_str,
 										NextDate=next_date_str,
-										DomainName=DomainName
+										DomainName=DomainName,
 										)
 		except Exception as e:
 			print(f"Chameleon template Exception {e}")
