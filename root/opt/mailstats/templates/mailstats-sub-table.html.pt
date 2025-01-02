@@ -8,10 +8,9 @@
         </thead>
         <tbody>          
             <tr tal:repeat="item array_2d">
-				<td tal:repeat="cell item">${cell}<span tal:condition="repeat.cell.index == 2">%</span></td>
+				<td tal:repeat="cell item">${cell}</td>
 			</tr>
 
         </tbody>
     </table>
 </div>
-
