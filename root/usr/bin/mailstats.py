@@ -578,20 +578,19 @@ def parse_data(data):
 			'sme': fields[0].strip() if len(fields) > 0 else None,
 			'qpsmtpd': fields[1].strip() if len(fields) > 1 else None,
 			'id': fields[2].strip() if len(fields) > 2 else None,
-			'action': fields[3].strip() if len(fields) > 3 else None,
-			'logterse': fields[4].strip() if len(fields) > 4 else None,
-			'ip': fields[5].strip() if len(fields) > 5 else None,
-			'sendurl': fields[6].strip() if len(fields) > 6 else None,     #1
-			'sendurl1': fields[7].strip() if len(fields) > 7 else None,    #2
-			'from-email': fields[8].strip() if len(fields) > 8 else None,  #3
-			'error-reason': fields[8].strip() if len(fields) > 8 else None, #3
-			'to-email': fields[9].strip() if len(fields) > 9 else None,		#4
-			'error-plugin': fields[10].strip() if len(fields) > 10 else None,  #5
-			'action1': fields[10].strip() if len(fields) > 10 else None,       #5
-			'error-number' : fields[11].strip() if len(fields) > 11 else None, #6
-			'sender': fields[12].strip() if len(fields) > 12 else None,      #7
+			'logterse': fields[3].strip() if len(fields) > 3 else None,
+			'ip': fields[4].strip() if len(fields) > 4 else None,
+			'sendurl': fields[5].strip() if len(fields) > 5 else None,     #1
+			'sendurl1': fields[6].strip() if len(fields) > 6 else None,    #2
+			'from-email': fields[7].strip() if len(fields) > 7 else None,  #3
+			'error-reason': fields[7].strip() if len(fields) > 7 else None, #3
+			'to-email': fields[8].strip() if len(fields) > 8 else None,		#4
+			'error-plugin': fields[9].strip() if len(fields) > 9 else None,  #5
+			'action1': fields[9].strip() if len(fields) > 9 else None,       #5
+			'error-number' : fields[10].strip() if len(fields) > 10 else None, #6
+			'sender': fields[11].strip() if len(fields) > 11 else None,      #7
 			'error-msg' :fields[12].strip() if len(fields) > 12 else None,   #7
-			'spam-status': fields[13].strip() if len(fields) > 13 else None, #8 
+			'spam-status': fields[12].strip() if len(fields) > 12 else None, #8 
 			'error-result': fields[13].strip() if len(fields) > 13 else None,#8
 			# Add more fields as necessary
 		}
@@ -749,6 +748,8 @@ def render_sub_table(table_title,table_headers,found_values,get_character=None):
 		if isinstance(found_values, dict):
 			# If found_values is a dictionary, we operate as previously
 			total_sum = sum(found_values.values())
+			if not BadCountries:
+				get_character = None
 			if get_character:
 				sub_result = [(key, value,
 							   f"{round(value / total_sum * 100, 2)}%",
@@ -1194,6 +1195,7 @@ if __name__ == "__main__":
 	
 	found_qpcodes = defaultdict(int)
 	qpcodes_pattern = re.compile(r"(\(.*\)).*'")
+	email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' #extract email from rejected message
 	i = 0;
 	sorted_len= len(sorted_log_dict)
 	#unless none to show
@@ -1226,13 +1228,13 @@ if __name__ == "__main__":
 			parsed_data = parse_data(data)
 			#if hour == 15:
 			#	print(f"Abs:{hour} {timestamp} {parsed_data['sendurl']} {parsed_data['from-email']}")
-			#print(f"{parsed_data}")
 			#Take out the mailstats email
 			if 'mailstats' in parsed_data['from-email'] and DomainName in parsed_data['from-email']:
 				continue
 			# Save the data here if necessary
 			if saveData:
 				save_summaries_to_db(anaysis_date_obj.strftime('%Y-%m-%d'),hour,parsed_data)
+			
 			#Count the number of emails through each of qpsmtpd, uqpsmtpd and sqpsmtpd
 			# the forkserver column in the log indicates it.
 			if parsed_data['qpsmtpd'].startswith ('qpsmtpd'):
@@ -1302,11 +1304,8 @@ if __name__ == "__main__":
 					columnCounts_2d[hour][WebMail] += 1
 					columnCounts_2d[ColTotals][WebMail] += 1
 
-
-
-
 			#Queued email
-			if parsed_data['action'] == '(queue)':
+			if parsed_data['action1'] == 'queued':
 				columnCounts_2d[hour][Ham] += 1
 				columnCounts_2d[ColTotals][Ham] += 1
 				# spamassassin not rejected
@@ -1322,6 +1321,7 @@ if __name__ == "__main__":
 								# Accumulate allowed score (inc negatives?)
 								hamavg += score
 								hamcount += 1
+
 			#spamassasin rejects
 			Isqueuedspam = False;
 			if parsed_data.get('spam-status') is not None and isinstance(parsed_data['spam-status'], str):
@@ -1348,6 +1348,8 @@ if __name__ == "__main__":
 
 					
 			# Count the qpsmtpd codes
+			#if parsed_data['id'] == '3352':
+			#	print(f"{parsed_data}")
 			if parsed_data['error-plugin'].strip() == 'naughty':
 				if parsed_data['error-msg'].startswith("(dnsbl)"):
 					columnCounts_2d[hour][RBLDNS]+= 1
@@ -1368,16 +1370,31 @@ if __name__ == "__main__":
 			
 			#Log the recipients and deny or accept and spam-tagged counts
 		    # Try to find an existing record for the email
-			email = parsed_data["from-email"]  # Extract email
-			action = parsed_data["action"]      # Extract action
-			#print(f"{email} {action}")
+			action = parsed_data["action1"]      # Extract action
+			if parsed_data['error-plugin'] == 'check_smtp_forward':
+				#extract rejected email address from sender  
+				match = re.search(email_pattern, parsed_data['sender'])  
+				# If a match is found, return the email address
+				if match:
+					email = match.group(0)
+				else:
+					email = "unknown"
+			elif parsed_data['error-plugin'] == 'check_badcountries':
+				email = "Unknown (Bad Country)"
+			elif parsed_data["to-email"]:
+				email = parsed_data["to-email"]  # Extract email
+				#Take out the chevrons
+				email = email.replace('<', '').replace('>', '')
+			else:
+				email = "Unknown (Non conf.?)"
+			#print(f"{parsed_data['id']} {email} {action}")
 			record = next((item for item in recipients_found if item['email'] == email), None)
 			if not record:
 				# If email is not in the array, we add it
-				record = {"email": email, "deny": 0, "accept": 0,"spam-tagged": 0}
+				record = {"email": email,"accept": 0,"deny": 0,"spam-tagged": 0}
 				recipients_found.append(record)
 			# Update the deny or accept count based on action
-			if action != "(queue)":
+			if action != "queued":
 				record["deny"] += 1
 			else:
 				record["accept"] += 1
@@ -1387,7 +1404,7 @@ if __name__ == "__main__":
 				
 			
 			#Now increment the column which the plugin name indicates
-			if parsed_data['action'] == '(deny)' and parsed_data['error-plugin']:
+			if parsed_data['error-msg'] and "msg denied before queued" in parsed_data['error-msg'] and parsed_data['error-plugin']:
 				if parsed_data['error-plugin']:
 					row = search_2d_list(parsed_data['error-plugin'],columnPlugin)
 					if not row == -1:
@@ -1472,7 +1489,7 @@ if __name__ == "__main__":
 						totalexternalsmtpsessions += 1
 					continue
 			except Exception as e:
-				print(f" Helo pattern error {e} {data[1]} {analysis_date}")
+				(print)(f" Helo pattern error {e} {data[1]} {analysis_date}")
 				continue
 					
 			#Pull out Geoip countries for analysis table
@@ -1485,7 +1502,7 @@ if __name__ == "__main__":
 					total_countries += 1
 					continue
 			except Exception as e:
-				print(f" Geoip pattern error {e} {data[1]} {analysis_date}")
+				print(f"Geoip pattern error {e} {data[1]} {analysis_date}")
 				continue
 			
 			#Pull out DMARC approvals
