@@ -1466,8 +1466,7 @@ if __name__ == "__main__":
 	i = 0
 	j = 0
 	log_len = len(log_entries)
-	#connection_type_counts = defaultdict(int)
-	connection_type_counts = {"qpsmtp":total_qpsmtpd,"sqpsmtp":total_sqpsmtpd,"uqpsmtp":total_uqpsmtpd}
+	connection_type_counts = defaultdict(int)
 	#print(f"Con:{connection_type_counts}")
 	if log_len > 0:
 		if isThonny:
@@ -1515,7 +1514,9 @@ if __name__ == "__main__":
 			match = connect_type_pattern.match(data[1])
 			if match:
 				connection_type = match.group(1)
+				#print(f"ct:{connection_type}")
 				connection_type_counts[connection_type] += 1
+				#print(f"Count:{connection_type_counts[connection_type]}")
 				continue
 
 	#Compute next and previous dates
