@@ -1005,6 +1005,32 @@ def scan_mail_users():
                 users_info[user] = total_junk_count
     return users_info
 
+def get_first_email_with_domain(email_string, domain):
+    """
+    Returns the first email address in the comma-separated string that matches the specified domain.
+    If there is only one email, it returns that email regardless of the domain.
+
+    Args:
+    email_string (str): A string of comma-separated email addresses.
+    domain (str): The domain to filter email addresses by.
+
+    Returns:
+    str: The first email address that matches the domain, or the single email if only one is provided, or None if no match is found.
+    """
+    # Remove leading and trailing whitespace and split the email string
+    emails = [email.strip() for email in email_string.split(',')]
+    
+    # Check if there is only one email
+    if len(emails) == 1:
+        return emails[0]  # Return the single email directly
+    
+    # Iterate through the list of emails
+    for email in emails:
+        # Check if the email ends with the specified domain
+        if email.endswith('@' + domain):
+            return email  # Return the first matching email
+    
+    return None  # Return None if no matching email is found
 if __name__ == "__main__":
 	try:
 		chameleon_version = pkg_resources.get_distribution("Chameleon").version
@@ -1226,8 +1252,10 @@ if __name__ == "__main__":
 			hour = dt.hour
 			# parse the data
 			parsed_data = parse_data(data)
-			#if hour == 15:
-			#	print(f"Abs:{hour} {timestamp} {parsed_data['sendurl']} {parsed_data['from-email']}")
+			#if parsed_data['id'] == '7787' or "7787" in data:
+			#	print(f"{parsed_data}")
+			#else:
+			#	print(f"{parsed_data['id']}")
 			#Take out the mailstats email
 			if 'mailstats' in parsed_data['from-email'] and DomainName in parsed_data['from-email']:
 				continue
@@ -1348,8 +1376,6 @@ if __name__ == "__main__":
 
 					
 			# Count the qpsmtpd codes
-			#if parsed_data['id'] == '3352':
-			#	print(f"{parsed_data}")
 			if parsed_data['error-plugin'].strip() == 'naughty':
 				if parsed_data['error-msg'].startswith("(dnsbl)"):
 					columnCounts_2d[hour][RBLDNS]+= 1
@@ -1378,29 +1404,38 @@ if __name__ == "__main__":
 				if match:
 					email = match.group(0)
 				else:
-					email = "unknown"
+					email = "unknown (no email found in smtp reject message)"
 			elif parsed_data['error-plugin'] == 'check_badcountries':
 				email = "Unknown (Bad Country)"
-			elif parsed_data["to-email"]:
-				email = parsed_data["to-email"]  # Extract email
+			elif not is_private_ip(parsed_data['ip']) and parsed_data["to-email"]:
+				#Only look at internal recipients from outside
 				#Take out the chevrons
-				email = email.replace('<', '').replace('>', '')
+				email = parsed_data["to-email"].replace('<', '').replace('>', '')
+				email = get_first_email_with_domain(email,DomainName)  # Extract email
+				if not email:
+					print(f"Incoming email with no internal email address: {email} {DomainName}")
+					email = "Unknown (no internal email found)"
 			else:
-				email = "Unknown (Non conf.?)"
+				if not is_private_ip(parsed_data['ip']):
+					email = "Unknown (non conf?)"
+				else:
+					email = None
 			#print(f"{parsed_data['id']} {email} {action}")
-			record = next((item for item in recipients_found if item['email'] == email), None)
-			if not record:
-				# If email is not in the array, we add it
-				record = {"email": email,"accept": 0,"deny": 0,"spam-tagged": 0}
-				recipients_found.append(record)
-			# Update the deny or accept count based on action
-			if action != "queued":
-				record["deny"] += 1
-			else:
-				record["accept"] += 1
-				#and see if it is spam tagged
-				if Isqueuedspam:
-					record["spam-tagged"] += 1
+			if email:
+				record = next((item for item in recipients_found if item['email'] == email), None)
+				if not record:
+					# If email is not in the array, we add it
+					record = {"email": email,"accept": 0,"deny": 0,"spam-tagged": 0}
+					recipients_found.append(record)
+				# Update the deny or accept count based on action
+				if action != "queued":
+					record["deny"] += 1
+				else:
+					record["accept"] += 1
+					#and see if it is spam tagged
+					if Isqueuedspam:
+						record["spam-tagged"] += 1
+			
 				
 			
 			#Now increment the column which the plugin name indicates
@@ -1477,6 +1512,7 @@ if __name__ == "__main__":
 				print_progress_bar(i, log_len, prefix='Scanning for sub tables:', suffix='Complete', length=50)
 				
 			# Match initial connection message
+			IsInternal = True
 			try:
 				match = helo_pattern.match(data[1])
 				if match:
@@ -1486,9 +1522,10 @@ if __name__ == "__main__":
 						totalinternalsmtpsessions += 1
 					else:
 						totalexternalsmtpsessions += 1
+						IsInternal = False
 					continue
 			except Exception as e:
-				(print)(f" Helo pattern error {e} {data[1]} {analysis_date}")
+				print(f" Helo pattern error {e} {data[1]} {analysis_date}")
 				continue
 					
 			#Pull out Geoip countries for analysis table
