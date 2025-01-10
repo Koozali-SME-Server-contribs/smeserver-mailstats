@@ -589,6 +589,7 @@ def parse_data(data):
 			'action1': fields[9].strip() if len(fields) > 9 else None,       #5
 			'error-number' : fields[10].strip() if len(fields) > 10 else None, #6
 			'sender': fields[11].strip() if len(fields) > 11 else None,      #7
+			'virus': fields[11].strip() if len(fields) > 11 else None,      #7
 			'error-msg' :fields[12].strip() if len(fields) > 12 else None,   #7
 			'spam-status': fields[12].strip() if len(fields) > 12 else None, #8 
 			'error-result': fields[13].strip() if len(fields) > 13 else None,#8
@@ -1194,7 +1195,7 @@ if __name__ == "__main__":
 	columnPlugin[Local] = [] 
 	columnPlugin[MailMan] = []
 	columnPlugin[DMARC] = ['dmarc'] 
-	columnPlugin[Virus] = ['pattern_filter', 'virus::pattern_filter','virus::clamav'] 
+	columnPlugin[Virus] = ['pattern_filter', 'virus::pattern_filter','virus::clamav','virus::clamdscan'] 
 	columnPlugin[RBLDNS] = ['rhsbl', 'dnsbl','uribl']
 	columnPlugin[Geoip] = ['check_badcountries'] 
 	columnPlugin[NonConf] = ['check_earlytalker','check_relay','check_norelay', 'require_resolvable_fromhost'
@@ -1252,8 +1253,8 @@ if __name__ == "__main__":
 			hour = dt.hour
 			# parse the data
 			parsed_data = parse_data(data)
-			#if parsed_data['id'] == '7787' or "7787" in data:
-			#	print(f"{parsed_data}")
+			if parsed_data['id'] == '13062' or "13062" in data:
+				print(f"{parsed_data}")
 			#else:
 			#	print(f"{parsed_data['id']}")
 			#Take out the mailstats email
@@ -1439,7 +1440,7 @@ if __name__ == "__main__":
 				
 			
 			#Now increment the column which the plugin name indicates
-			if parsed_data['error-msg'] and "msg denied before queued" in parsed_data['error-msg'] and parsed_data['error-plugin']:
+			if parsed_data['error-msg'] and "msg denied before queued" in parsed_data['error-msg'] and parsed_data['virus']:
 				if parsed_data['error-plugin']:
 					row = search_2d_list(parsed_data['error-plugin'],columnPlugin)
 					if not row == -1:
@@ -1447,13 +1448,13 @@ if __name__ == "__main__":
 						columnCounts_2d[ColTotals][row] += 1
 						# a few ad hoc extra extractons of data
 						if row == Virus:
-							match = virus_pattern.match(parsed_data['action1'])
+							match = virus_pattern.match(parsed_data['virus'])
 							if match:
 								found_viruses[match.group(1)] += 1
 							else:
-								found_viruses[parsed_data['action1']] += 1
+								found_viruses[parsed_data['virus']] += 1
 					else:
-						found_qpcodes[parsed_data['action1']] += 1
+						found_qpcodes[parsed_data['error-plugin']] += 1
 			if isThonny:
 				print() #seperate the [progress bar]
 				
