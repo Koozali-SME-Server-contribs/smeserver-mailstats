@@ -981,6 +981,10 @@ def scan_mail_users():
         'Maildir/.Junk/new',
         'Maildir/.Junkmail/cur',
         'Maildir/.Junkmail/new'
+        'Maildir/.junk/cur',
+        'Maildir/.junk/new',
+        'Maildir/.junkmail/cur',
+        'Maildir/.junkmail/new'
     ]
 
     # Iterate through each user directory
@@ -1629,7 +1633,7 @@ if __name__ == "__main__":
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
 	
 	#Junk mails
-	junk_mail_count_headers = ['Usernane','Count', 'Percent']
+	junk_mail_count_headers = ['Username','Count', 'Percent']
 	junk_mail_counts = scan_mail_users()
 	junk_mail_count_title = 'Junk mail counts'
 	rendered_html = render_sub_table(junk_mail_count_title,junk_mail_count_headers,junk_mail_counts)
