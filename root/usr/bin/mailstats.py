@@ -1043,7 +1043,8 @@ if __name__ == "__main__":
 	except pkg_resources.DistributionNotFound:
 		chameleon_version = "Version information not available"
 	python_version = sys.version
-	python_version = python_version[:8]
+	#python_version = python_version[:8]
+	python_version = re.match(r'^\d+\.\d+\.\d+',python_version).group(0); #Extract the version number
 	current_datetime = datetime.now()
 	formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M")
 	
