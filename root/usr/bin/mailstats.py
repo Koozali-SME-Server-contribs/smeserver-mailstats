@@ -578,21 +578,22 @@ def parse_data(data):
 			'sme': fields[0].strip() if len(fields) > 0 else None,
 			'qpsmtpd': fields[1].strip() if len(fields) > 1 else None,
 			'id': fields[2].strip() if len(fields) > 2 else None,
-			'logterse': fields[3].strip() if len(fields) > 3 else None,
-			'ip': fields[4].strip() if len(fields) > 4 else None,
-			'sendurl': fields[5].strip() if len(fields) > 5 else None,     #1
-			'sendurl1': fields[6].strip() if len(fields) > 6 else None,    #2
-			'from-email': fields[7].strip() if len(fields) > 7 else None,  #3
-			'error-reason': fields[7].strip() if len(fields) > 7 else None, #3
-			'to-email': fields[8].strip() if len(fields) > 8 else None,		#4
-			'error-plugin': fields[9].strip() if len(fields) > 9 else None,  #5
-			'action1': fields[9].strip() if len(fields) > 9 else None,       #5
-			'error-number' : fields[10].strip() if len(fields) > 10 else None, #6
-			'sender': fields[11].strip() if len(fields) > 11 else None,      #7
-			'virus': fields[11].strip() if len(fields) > 11 else None,      #7
-			'error-msg' :fields[12].strip() if len(fields) > 12 else None,   #7
-			'spam-status': fields[12].strip() if len(fields) > 12 else None, #8 
-			'error-result': fields[13].strip() if len(fields) > 13 else None,#8
+			'action': fields[3].strip() if len(fields) > 3 else None,       #5
+			'logterse': fields[4].strip() if len(fields) > 4 else None,
+			'ip': fields[5].strip() if len(fields) > 5 else None,
+			'sendurl': fields[6].strip() if len(fields) > 6 else None,     #1
+			'sendurl1': fields[7].strip() if len(fields) > 7 else None,    #2
+			'from-email': fields[8].strip() if len(fields) > 8 else None,  #3
+			'error-reason': fields[8].strip() if len(fields) > 9 else None, #3
+			'to-email': fields[9].strip() if len(fields) > 9 else None,		#4
+			'error-plugin': fields[10].strip() if len(fields) > 10 else None,  #5
+			'action1': fields[10].strip() if len(fields) > 10 else None,       #5
+			'error-number' : fields[11].strip() if len(fields) > 11 else None, #6
+			'sender': fields[12].strip() if len(fields) > 12 else None,      #7
+			'virus': fields[12].strip() if len(fields) > 12 else None,      #7
+			'error-msg' :fields[13].strip() if len(fields) > 13 else None,   #7
+			'spam-status': fields[13].strip() if len(fields) > 13 else None, #8 
+			'error-result': fields[14].strip() if len(fields) > 14 else None,#8
 			# Add more fields as necessary
 		}
 	except:
