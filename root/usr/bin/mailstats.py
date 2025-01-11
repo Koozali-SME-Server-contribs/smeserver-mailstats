@@ -951,6 +951,10 @@ def get_heading():
 		for connection_type in connection_type_counts.keys():
 			smtp_stats += f"\nCount of {connection_type} connections: {connection_type_counts[connection_type]}"
 
+	if len(total_ports)>0:
+		for port_number in total_ports.keys():
+			smtp_stats += f"\nCount of port:{port_number} connections: {total_ports[port_number]}"
+
 	smtp_stats = smtp_stats + f"\nEmails per hour: {emailperhour:.1f}/hr\n"\
 				 f"Average spam score (accepted): {spamavg or 0:.2f}\n"\
 				 f"Average spam score (rejected): {rejectspamavg or 0:.2f}\n"\
@@ -1227,6 +1231,7 @@ if __name__ == "__main__":
 	recipients_found = []
 	
 	found_qpcodes = defaultdict(int)
+	total_ports = defaultdict(int)
 	qpcodes_pattern = re.compile(r"(\(.*\)).*'")
 	email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' #extract email from rejected message
 	i = 0;
@@ -1259,13 +1264,13 @@ if __name__ == "__main__":
 			hour = dt.hour
 			# parse the data
 			parsed_data = parse_data(data)
-			if parsed_data['id'] == '13062' or "13062" in data:
-				print(f"{parsed_data}")
+			#if parsed_data['id'] == '401103' or "401103" in data:
+			#	print(f"{parsed_data}")
 			#else:
-			#	print(f"{parsed_data['id']}")
 			#Take out the mailstats email
 			if 'mailstats' in parsed_data['from-email'] and DomainName in parsed_data['from-email']:
-				continue
+				print(f"{parsed_data}")
+				#continue
 			# Save the data here if necessary
 			if saveData:
 				save_summaries_to_db(anaysis_date_obj.strftime('%Y-%m-%d'),hour,parsed_data)
@@ -1273,11 +1278,11 @@ if __name__ == "__main__":
 			#Count the number of emails through each of qpsmtpd, uqpsmtpd and sqpsmtpd
 			# the forkserver column in the log indicates it.
 			if parsed_data['qpsmtpd'].startswith ('qpsmtpd'):
-				total_qpsmtpd +=1
+				total_ports['25'] +=1
 			elif parsed_data['qpsmtpd'].startswith ('sqpsmtpd'):
-				total_sqpsmtpd += 1
+				total_ports['465'] +=1
 			elif parsed_data['qpsmtpd'].startswith ('uqpsmtpd'):
-				total_uqpsmtpd +=1
+				total_ports['587'] +=1
 			# Increment Count in which headings it falls
 			#Hourly count and column total
 			columnCounts_2d[hour][Hour] += 1
@@ -1325,7 +1330,7 @@ if __name__ == "__main__":
 							#localflag = 1;
 						else:
 							# ignore incoming localhost spoofs
-							if not 'msg denied before queued' in parsed_data['error-msg']:
+							if parsed_data['error-msg'] and not 'msg denied before queued' in parsed_data['error-msg']:
 								#Webmail
 								#$localflag = 1;
 								#$WebMailsendtotal++;
@@ -1500,6 +1505,7 @@ if __name__ == "__main__":
 	dmarc_pattern = re.compile(r".*dmarc: pass")
 	helo_pattern = re.compile(r".*Accepted connection.*?from (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) \/ ([\w.-]+)")
 	connect_type_pattern = re.compile(r".*connect via (.*)")
+	tls_type_pattern = re.compile(r".*Go ahead with (.*)")
 	total_countries = 0
 	DMARCOkCount = 0
 	totalinternalsmtpsessions = 0
@@ -1562,6 +1568,15 @@ if __name__ == "__main__":
 				connection_type_counts[connection_type] += 1
 				#print(f"Count:{connection_type_counts[connection_type]}")
 				continue
+				
+			match = tls_type_pattern.match(data[1])
+			if match:
+				connection_type = match.group(1)
+				#print(f"ct:{connection_type}")
+				connection_type_counts[connection_type] += 1
+				#print(f"Count:{connection_type_counts[connection_type]}")
+				continue
+			
 
 	#Compute next and previous dates
 	day_format = "%Y-%m-%d"
@@ -1644,7 +1659,7 @@ if __name__ == "__main__":
 
 	#virus codes
 	virus_headers = ["Virus",'Count','Percent']
-	virus_title = 'Virus types found'
+	virus_title = 'Viruses found'
 	rendered_html = render_sub_table(virus_title,virus_headers,found_viruses)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
@@ -1652,7 +1667,7 @@ if __name__ == "__main__":
 	#Recipient counts
 	#print(f"{recipients_found}")
 	recipient_count_headers = ["Email",'Queued','Rejected','Spam tagged','Accepted Percent']
-	recipient_count_title = 'Recipient count and status '
+	recipient_count_title = 'Incoming email recipients'
 	rendered_html = render_sub_table(recipient_count_title,recipient_count_headers,recipients_found)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
