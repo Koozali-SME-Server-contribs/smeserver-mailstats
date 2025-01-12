@@ -125,7 +125,7 @@ p.cssvalid,p.htmlvalid {float:left;margin-right:20px}
 }
 .subtables > div {
 	flex: 1; /* Equal width tables, remove or adjust based on your preference */
-	margin-left:10px;
+	margin-left:0px;
 }
     
 .footer {}
@@ -147,6 +147,41 @@ p.cssvalid,p.htmlvalid {float:left;margin-right:20px}
   color: grey;
 }
 
+.subtables {
+    display: flex;
+    flex-wrap: wrap; /* Allows the items to wrap onto the next line */
+    justify-content: space-between; /* Distributes space between the tables */
+    margin: -10px; /* Negative margin to offset the table margins */
+}
 
+.table-container {
+    display: flex;
+    flex-wrap: wrap; /* Allowing wrapping of the tables */
+    width: 100%; /* Makes the container full width */
+    box-sizing: border-box; /* Adjust size calculations to include padding and borders */
+}
 
+.Incoming.email.recipients, .Junk.mail.counts, .Geoip.results, .Qpsmtpd.codes.league.table, .Viruses.found {
+    flex: 0 1 calc(25% - 20px); /* Each table will take 25% of the width minus margins */
+    margin: 10px; /* Margin for spacing */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
 
+/* Ensure tables adapt on smaller screens */
+@media (max-width: 1024px) {
+    .Incoming.email.recipients, .Junk.mail.counts, .Geoip.results, .Qpsmtpd.codes.league.table, .Viruses.found {
+        flex: 0 1 calc(33% - 20px); /* 33% width for medium screens (3 columns)*/
+    }
+}
+
+@media (max-width: 768px) {
+    .Incoming.email.recipients, .Junk.mail.counts, .Geoip.results, .Qpsmtpd.codes.league.table, .Viruses.found {
+        flex: 0 1 calc(50% - 20px); /* 50% width for smaller screens (2 columns)*/
+    }
+}
+
+@media (max-width: 480px) {
+    .Incoming.email.recipients, .Junk.mail.counts, .Geoip.results, .Qpsmtpd.codes.league.table, .Viruses.found {
+        flex: 0 1 100%; /* 100% width for mobile screens (1 column) */
+    }
+}
