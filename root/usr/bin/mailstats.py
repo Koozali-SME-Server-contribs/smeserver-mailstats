@@ -953,7 +953,7 @@ def get_heading():
 
 	if len(total_ports)>0:
 		for port_number in total_ports.keys():
-			smtp_stats += f"\nCount of port:{port_number} connections: {total_ports[port_number]}"
+			smtp_stats += f"\nCount of port {port_number} connections: {total_ports[port_number]}"
 
 	smtp_stats = smtp_stats + f"\nEmails per hour: {emailperhour:.1f}/hr\n"\
 				 f"Average spam score (accepted): {spamavg or 0:.2f}\n"\
