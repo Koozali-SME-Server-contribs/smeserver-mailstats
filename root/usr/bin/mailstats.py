@@ -375,12 +375,9 @@ def create_line_chart(data2d, xLabels, yLabels, save_path='line_chart.html'):
     graph_html = fig.to_html(full_html=False,include_plotlyjs='https://cdn.plot.ly/plotly-latest.min.js')
     return graph_html
 
-
-
-    
-def save_summaries_to_db(date_str, hour, parsed_data):
-
+def save_summaries_to_db(cursor, conn, date_str, hour, parsed_data):
     # Convert parsed_data to JSON string
+    global count_records_to_db
     json_data = json.dumps(parsed_data)
 
     # Insert the record
@@ -388,14 +385,15 @@ def save_summaries_to_db(date_str, hour, parsed_data):
     INSERT INTO SummaryLogs (Date, Hour, logData)
     VALUES (%s, %s, %s)
     """
-    
+   
     try:
         cursor.execute(insert_query, (date_str, hour, json_data))
         conn.commit()
-    except mysql.connector.Error as err:
+        count_records_to_db += 1
+    except pymysql.Error as err:
         print(f"DB Error {date_str} {hour} : {err}")
         conn.rollback()
-        
+                
 def is_running_under_thonny():
     # Check for the 'THONNY_USER_DIR' environment variable
     return 'THONNY_USER_DIR' in os.environ
@@ -839,7 +837,7 @@ def read_html_from_file(filepath):
 	# Need to add in here the contents of the css file at the end of the head section.
 	with open(filepath, 'r', encoding='utf-8') as file:
 		html_contents = file.read()
-	print("reading from html file")
+	print("Reading from html file")
 	# Get Filepath
 	css_path = os.path.dirname(filepath)+"/../css/mailstats.css"
 	# Read in CSS 
@@ -1115,52 +1113,60 @@ if __name__ == "__main__":
 	
 	BadCountries = get_value(ConfigDB,"qpsmtpd","BadCountries")
 	
+	count_records_to_db = 0;
+	
 	# Db save control
 	saveData = get_value(ConfigDB,"mailstats","SaveDataToMySQL","no") == 'yes' or forceDbSave
+
 	if saveData:
-		DBName = "mailstats";
-		DBHost = get_value(ConfigDB,'mailstats','DBHost',"localhost")
-		DBPort = get_value(ConfigDB,'mailstats','DBPort',"3306")
-		DBName = 'mailstats'
+		DBName = "mailstats"
+		DBHost = get_value(ConfigDB, 'mailstats', 'DBHost', "localhost")
+		DBPort = int(get_value(ConfigDB, 'mailstats', 'DBPort', "3306"))  # Ensure port is an integer
 		DBPassw = 'mailstats'
 		DBUser = 'mailstats'
 		UnixSocket = "/var/lib/mysql/mysql.sock" 
-		# see if the DB exists
-		# Try to Establish a database connection
+
+		# Try to establish a database connection
 		try:
-			conn = mysql.connector.connect(
+			conn = pymysql.connect(
 				host=DBHost,
 				user=DBUser,
 				password=DBPassw,
 				database=DBName,
 				port=DBPort,
-				unix_socket=UnixSocket
+				unix_socket=UnixSocket,
+				cursorclass=pymysql.cursors.DictCursor  # Optional: use DictCursor for dict output
 			)
 			cursor = conn.cursor()
-			# Create table if it doesn't exist
-			cursor.execute("""
-			CREATE TABLE IF NOT EXISTS SummaryLogs (
-				id INT AUTO_INCREMENT PRIMARY KEY,
-				Date DATE,
-				Hour INT,
-				logData TEXT
-			)
-			""")
-			# and prune the DB here if needed.
+			# Check if the table exists before creating it
+			check_table_query = "SHOW TABLES LIKE 'SummaryLogs'"
+			cursor.execute(check_table_query)
+			table_exists = cursor.fetchone()
+			if not table_exists:
+				# Create table if it doesn't exist
+				cursor.execute("""
+				CREATE TABLE IF NOT EXISTS SummaryLogs (
+					id INT AUTO_INCREMENT PRIMARY KEY,
+					Date DATE,
+					Hour INT,
+					logData TEXT
+				)
+				""")
 			# Delete existing records for the given date
 			try:
 				delete_query = """
 				DELETE FROM SummaryLogs
 				WHERE Date = %s
 				"""
-				cursor.execute(delete_query, (analysis_date,))   #Don't forget the syntactic sugar of the extra comma to make it a tuple!
+				cursor.execute(delete_query, (analysis_date,))  # Don't forget the extra comma for tuple
 				# Get the number of records deleted
 				rows_deleted = cursor.rowcount
 				if rows_deleted > 0:
 					print(f"Deleted {rows_deleted} rows for {analysis_date} ")
-			except mysql.connector.Error as e:
+			except pymysql.Error as e:
 				print(f"SQL Delete failed ({delete_query}) ({e}) ")
-		except mysql.connector.Error as e:
+
+		except pymysql.Error as e:
 			print(f"Unable to connect to {DBName} on {DBHost} port {DBPort} error ({e}) ")
 			saveData = False
 	
@@ -1269,12 +1275,12 @@ if __name__ == "__main__":
 			#else:
 			#Take out the mailstats email
 			if 'mailstats' in parsed_data['from-email'] and DomainName in parsed_data['from-email']:
-				print(f"{parsed_data}")
-				#continue
+				#print(f"{parsed_data}")
+				continue
 			# Save the data here if necessary
 			if saveData:
-				save_summaries_to_db(anaysis_date_obj.strftime('%Y-%m-%d'),hour,parsed_data)
-			
+				save_summaries_to_db(cursor,conn,anaysis_date_obj.strftime('%Y-%m-%d'),hour,parsed_data)
+
 			#Count the number of emails through each of qpsmtpd, uqpsmtpd and sqpsmtpd
 			# the forkserver column in the log indicates it.
 			if parsed_data['qpsmtpd'].startswith ('qpsmtpd'):
@@ -1632,22 +1638,22 @@ if __name__ == "__main__":
 	rendered_html = get_heading()
 	total_html =  insert_string_after(total_html,rendered_html, "<!---Add in header information here -->")
 
-	#add in the subservient tables..
+	#add in the subservient tables..(remeber they appear in the reverse order of below!)
+
+	#virus codes
+	virus_headers = ["Virus",'Count','Percent']
+	virus_title = 'Viruses found'
+	rendered_html = render_sub_table(virus_title,virus_headers,found_viruses)
+	# Add it to the total 
+	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
 
 	#qpsmtd codes
-	#print(f"{found_qpcodes}")
 	qpsmtpd_headers = ["Reason",'Count','Percent']
 	qpsmtpd_title = 'Qpsmtpd codes league table'
 	rendered_html = render_sub_table(qpsmtpd_title,qpsmtpd_headers,found_qpcodes)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
 	
-	#Geoip Country codes
-	geoip_headers  = ['Country','Count','Percent','Rejected?']
-	geoip_title = 'Geoip results'
-	rendered_html = render_sub_table(geoip_title,geoip_headers,found_countries,get_character_in_reject_list)
-	# Add it to the total 
-	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
 	
 	#Junk mails
 	junk_mail_count_headers = ['Username','Count', 'Percent']
@@ -1657,12 +1663,6 @@ if __name__ == "__main__":
 	# Add it to the total 
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
 
-	#virus codes
-	virus_headers = ["Virus",'Count','Percent']
-	virus_title = 'Viruses found'
-	rendered_html = render_sub_table(virus_title,virus_headers,found_viruses)
-	# Add it to the total 
-	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
 	
 	#Recipient counts
 	#print(f"{recipients_found}")
@@ -1671,6 +1671,14 @@ if __name__ == "__main__":
 	rendered_html = render_sub_table(recipient_count_title,recipient_count_headers,recipients_found)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
+
+	#Geoip Country codes
+	geoip_headers  = ['Country','Count','Percent','Rejected?']
+	geoip_title = 'Geoip results'
+	rendered_html = render_sub_table(geoip_title,geoip_headers,found_countries,get_character_in_reject_list)
+	# Add it to the total 
+	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
+
 
 	
 	if saveData:
@@ -1699,6 +1707,7 @@ if __name__ == "__main__":
 	else:
 		text_file_path = ""
 	
+	print(f"Written {count_records_to_db} records to DB")
 	
 	html_content = None
 	text_content = None
