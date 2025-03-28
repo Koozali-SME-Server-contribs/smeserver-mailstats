@@ -505,10 +505,12 @@ def read_in_relevant_log_file(file_path,analysis_date=yesterday):
 	# Get the year of yesterday
 	yesterday = datetime.now() - timedelta(days=1)
 	yesterday_year = yesterday.year
+	line_count = 0;
 
 	with codecs.open(file_path, 'rb','utf-8', errors='replace') as file:
 		try:
 			for Line in file:
+				line_count += 1
 				#extract time stamp
 				try:
 					entry = split_timestamp_and_data(Line)
@@ -525,8 +527,8 @@ def read_in_relevant_log_file(file_path,analysis_date=yesterday):
 					timestamp = datetime.strptime(timestamp_str, "%b %d %H:%M:%S")
 					# and add in gthe year of yesterday
 					timestamp = timestamp.replace(year=yesterday_year)
-				except ValueError as e:
-					print(f"ValueError {e} on timestamp extract {timestamp_str}:{entry[1]}")
+				except (ValueError, TypeError) as e:
+					print(f"Error {e} line {line_count} on timestamp extract {timestamp_str}:{entry[1]}")
 				#print(f"Stamps: {timestamp.date()} {analysis_date.date()}")
 				if timestamp.date() == analysis_date.date():
 					log_entries.append((timestamp, entry[1]))
@@ -1055,6 +1057,40 @@ def get_first_email_with_domain(email_string, domain):
             return email  # Return the first matching email
     
     return None  # Return None if no matching email is found
+    
+def display_keys_and_values(data):
+    """
+    Display all keys and values for a list of dictionaries or an array (list of lists).
+
+    Args:
+        data (list): A list of dictionaries or a list of lists.
+    """
+    if not isinstance(data, list):
+        raise ValueError("Input must be a list.")
+
+    if all(isinstance(item, dict) for item in data):
+        # Handle list of dictionaries
+        for index, dictionary in enumerate(data):
+            print(f"Item {index + 1}:")
+            for key, value in dictionary.items():
+                print(f"  {key}: {value}")
+            print()  # Add a blank line between items
+    elif all(isinstance(item, list) for item in data):
+        # Handle array (list of lists)
+        for index, item in enumerate(data):
+            print(f"Item {index + 1}:")
+            for i, value in enumerate(item):
+                print(f"  Column {i + 1}: {value}")
+            print()  # Add a blank line between items
+    else:
+        raise ValueError("Input must be a list of dictionaries or a list of lists.")
+
+def extract_blacklist_domain(text):
+    match = re.search(r'http://www\.surbl\.org', text)
+    if match:
+        return "www.surbl.org"
+    return None
+
 if __name__ == "__main__":
 	try:
 		chameleon_version = pkg_resources.get_distribution("Chameleon").version
@@ -1254,6 +1290,8 @@ if __name__ == "__main__":
 	
 	found_qpcodes = defaultdict(int)
 	total_ports = defaultdict(int)
+	blacklist_found = defaultdict(int)
+	
 	qpcodes_pattern = re.compile(r"(\(.*\)).*'")
 	email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' #extract email from rejected message
 	i = 0;
@@ -1427,6 +1465,12 @@ if __name__ == "__main__":
 					found_qpcodes[parsed_data['error-plugin']+"-"+rejReason] += 1
 				else:
 					found_qpcodes[parsed_data['action1']] += 1
+
+			#Check for blacklist rejection
+			error_plugin = parsed_data['error-plugin'].strip()
+			if  error_plugin == 'rhsbl' or error_plugin == 'dnsbl':
+				blacklist_domain = extract_blacklist_domain(parsed_data['sender'])
+				blacklist_found[blacklist_domain] += 1
 			
 			#Log the recipients and deny or accept and spam-tagged counts
 		    # Try to find an existing record for the email
@@ -1694,8 +1738,13 @@ if __name__ == "__main__":
 	rendered_html = render_sub_table(geoip_title,geoip_headers,found_countries,get_character_in_reject_list)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
-
-
+	
+	#Blacklist counts
+	blacklist_headers = ['URL','Count','Percent']
+	blacklist_title = 'Blacklist used'
+	rendered_html = render_sub_table(blacklist_title,blacklist_headers,blacklist_found,suppress_threshold=True)
+	# Add it to the total 
+	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
 	
 	if saveData:
 		# Close the connection

@@ -161,7 +161,7 @@ p.cssvalid,p.htmlvalid {float:left;margin-right:20px}
     box-sizing: border-box; /* Adjust size calculations to include padding and borders */
 }
 
-.Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses {
+.Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses, .Blacklist {
     flex: 0 1 calc(25% - 20px); /* Each table will take 25% of the width minus margins */
     margin: 10px; /* Margin for spacing */
     box-sizing: border-box; /* Include padding and border in the element's total width and height */
@@ -169,7 +169,7 @@ p.cssvalid,p.htmlvalid {float:left;margin-right:20px}
 
 /* Ensure tables adapt on smaller screens */
 /* Default styling for large screens (5 columns) */
-.Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses {
+.Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses, .Blacklist {
     flex: 0 1 calc(20% - 20px); /* 20% width for 5 columns */
     margin: 10px;
     box-sizing: border-box;
@@ -177,28 +177,28 @@ p.cssvalid,p.htmlvalid {float:left;margin-right:20px}
 
 /* 4 columns layout */
 @media (max-width: 1600px) {
-    .Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses {
+    .Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses, .Blacklist {
         flex: 0 1 calc(25% - 20px); /* 25% width for 4 columns */
     }
 }
 
 /* 3 columns layout */
 @media (max-width: 1200px) {
-    .Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses {
+    .Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses, .Blacklist {
         flex: 0 1 calc(33.333% - 20px); /* 33.333% width for 3 columns */
     }
 }
 
 /* 2 columns layout */
 @media (max-width: 600px) {
-    .Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses {
+    .Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses, .Blacklist {
         flex: 0 1 calc(50% - 20px); /* 50% width for 2 columns */
     }
 }
 
 /* 1 column layout for mobile */
 @media (max-width: 300px) {
-    .Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses {
+    .Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses, .Blacklist{
         flex: 0 1 100%; /* 100% width for 1 column */
     }
 }
