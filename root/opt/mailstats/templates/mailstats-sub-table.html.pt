@@ -1,5 +1,11 @@
-<div class="${title}">
+<div class="${classname}">
 <h2>${title}</h2>
+	<tal:block condition="threshold != 0">
+		<span class='greyed-out'>Display threshold set to ${threshold}%</span>
+	</tal:block>
+	<tal:block condition="threshold == 0">
+		<br>
+	</tal:block>
     <table style="border-collapse:collapse;">
         <thead>
             <tr>

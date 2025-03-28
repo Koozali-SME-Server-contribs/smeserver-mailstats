@@ -740,14 +740,15 @@ def split_timestamp_and_data(log_entry: str) -> list:
 	#print(f"ts:{timestamp}")
 	return [timestamp, rest_of_line]
 	
-def render_sub_table(table_title,table_headers,found_values,get_character=None):
-	#print(f"render_sub_table:{table_title} {found_values}")
+def render_sub_table(table_title, table_headers, found_values, get_character=None, suppress_threshold=False):
 	#Check if any data provided
 	if len(found_values) != 0:
 		# Get the total
+		original_total = 0  # Initialize total variable
 		if isinstance(found_values, dict):
 			# If found_values is a dictionary, we operate as previously
 			total_sum = sum(found_values.values())
+			original_total = total_sum
 			if not BadCountries:
 				get_character = None
 			if get_character:
@@ -761,6 +762,7 @@ def render_sub_table(table_title,table_headers,found_values,get_character=None):
 			# If found_values is a list of values
 			if all(isinstance(v, (int, float)) for v in found_values):
 				total_sum = sum(found_values)
+				original_total = total_sum
 				sub_result = [(i, value,
 							   f"{round(value / total_sum * 100, 2)}%") for i, value in enumerate(found_values)]
 			# If found_values is a list of dictionaries
@@ -771,27 +773,12 @@ def render_sub_table(table_title,table_headers,found_values,get_character=None):
 
 				# Calculate the total of the first numeric entry (index 1)
 				total = sum(row[1] for row in sub_result)
+				original_total = total
 
 				# Append percentage of the total for each entry
 				for row in sub_result:
 					percentage = f"{round(row[1] / total * 100, 2) if total else 0}%"  # Handle division by zero
 					row.append(percentage)
-				
-				# total_sum = sum(d.get('value', 0) for d in found_values)  # Adjust 'value' if necessary 
-				# if total_sum != 0:
-					# if get_character:
-						# sub_result = [(d.get('key', i), d.get('value', 0),
-									   # f"{round(d.get('value', 0) / total_sum * 100, 2)}%",
-									   # f"{get_character(d.get('key', i))}") for i, d in enumerate(found_values)]
-					# else:
-						# sub_result = [(d.get('key', i), d.get('value', 0),
-									   # f"{round(d.get('value', 0) / total_sum * 100, 2)}%") for i, d in enumerate(found_values)]
-				# else:
-					# if get_character:
-						# sub_result = [(d.get('key', i), d.get('value', 0),
-									   # f"{get_character(d.get('key', i))}") for i, d in enumerate(found_values)]
-					# else:
-						# sub_result = [(d.get('key', i), d.get('value', 0)) for i, d in enumerate(found_values)]
 					
 			else:
 				raise ValueError("found_values must be either a list of numbers or a list of dictionaries.")
@@ -799,6 +786,30 @@ def render_sub_table(table_title,table_headers,found_values,get_character=None):
 			raise TypeError("found_values must be a dictionary or a list.")
 		#print(f"Sub:{sub_result}")
 		sub_result.sort(key=lambda x: float(x[1]), reverse=True)  # Sort by percentage in descending order
+
+		# Dynamic threshold calculation
+		if not suppress_threshold:
+			dynamic_threshold = max(1, 100 / (original_total**0.5)) if original_total > 0 else 0
+			dynamic_threshold = round(dynamic_threshold,1)
+			print(f"Threshold for {table_title} set to {dynamic_threshold}% ")
+		else:
+			dynamic_threshold=0
+		absolute_floor = 50  # Minimum absolute value threshold
+
+		# Filter results using early termination
+		filtered_sub_result = []
+		for row in sub_result:
+			value = row[1]
+			percentage = (value / original_total * 100) if original_total else 0
+			
+			# Exit condition: below both thresholds
+			if percentage < dynamic_threshold and value < absolute_floor:
+				break
+				
+			filtered_sub_result.append(row)
+		
+		sub_result = filtered_sub_result  # Keep only significant rows
+
 		sub_template_path = template_dir+'mailstats-sub-table.html.pt'
 		# Load the template
 		with open(sub_template_path, 'r') as template_file:
@@ -808,21 +819,26 @@ def render_sub_table(table_title,table_headers,found_values,get_character=None):
 			template = PageTemplate(template_content)
 			# Render the template with the 2D array data and column headers
 			try:
-				rendered_html = template(array_2d=sub_result, column_headers=table_headers, title=table_title)
+				rendered_html = template(array_2d=sub_result, column_headers=table_headers, 
+										title=table_title, classname=get_first_word(table_title),
+										threshold=dynamic_threshold)
 			except Exception as e:
 				raise ValueError(f"{table_title}: A chameleon controller render error occurred: {e}")
 		except Exception as e:
 			raise ValueError(f"{table_title}: A chameleon controller template error occurred: {e}")
 	else:
-		rendered_html = f"<div class={table_title}><h2>{table_title}</h2>No data for {table_title}</div>"
+		rendered_html = f"<div class='{get_first_word(table_title)}'><h2>{table_title}</h2>No data for {table_title}</div>"
 	return rendered_html
 	
+
 def get_character_in_reject_list(code):
 	if code in BadCountries:
 		return "*"
 	else:
 		return ""
 	
+def get_first_word(text):
+    return text.split(None, 1)[0]
         
 def read_html_from_file(filepath):
 	"""
@@ -1643,7 +1659,7 @@ if __name__ == "__main__":
 	#virus codes
 	virus_headers = ["Virus",'Count','Percent']
 	virus_title = 'Viruses found'
-	rendered_html = render_sub_table(virus_title,virus_headers,found_viruses)
+	rendered_html = render_sub_table(virus_title,virus_headers,found_viruses,suppress_threshold=True)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
 
@@ -1659,7 +1675,7 @@ if __name__ == "__main__":
 	junk_mail_count_headers = ['Username','Count', 'Percent']
 	junk_mail_counts = scan_mail_users()
 	junk_mail_count_title = 'Junk mail counts'
-	rendered_html = render_sub_table(junk_mail_count_title,junk_mail_count_headers,junk_mail_counts)
+	rendered_html = render_sub_table(junk_mail_count_title,junk_mail_count_headers,junk_mail_counts,suppress_threshold=True)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
 
@@ -1668,7 +1684,7 @@ if __name__ == "__main__":
 	#print(f"{recipients_found}")
 	recipient_count_headers = ["Email",'Queued','Rejected','Spam tagged','Accepted Percent']
 	recipient_count_title = 'Incoming email recipients'
-	rendered_html = render_sub_table(recipient_count_title,recipient_count_headers,recipients_found)
+	rendered_html = render_sub_table(recipient_count_title,recipient_count_headers,recipients_found,suppress_threshold=True)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
 

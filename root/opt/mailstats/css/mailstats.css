@@ -161,27 +161,44 @@ p.cssvalid,p.htmlvalid {float:left;margin-right:20px}
     box-sizing: border-box; /* Adjust size calculations to include padding and borders */
 }
 
-.Incoming.email.recipients, .Junk.mail.counts, .Geoip.results, .Qpsmtpd.codes.league.table, .Viruses.found {
+.Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses {
     flex: 0 1 calc(25% - 20px); /* Each table will take 25% of the width minus margins */
     margin: 10px; /* Margin for spacing */
     box-sizing: border-box; /* Include padding and border in the element's total width and height */
 }
 
 /* Ensure tables adapt on smaller screens */
-@media (max-width: 1024px) {
-    .Incoming.email.recipients, .Junk.mail.counts, .Geoip.results, .Qpsmtpd.codes.league.table, .Viruses.found {
-        flex: 0 1 calc(33% - 20px); /* 33% width for medium screens (3 columns)*/
+/* Default styling for large screens (5 columns) */
+.Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses {
+    flex: 0 1 calc(20% - 20px); /* 20% width for 5 columns */
+    margin: 10px;
+    box-sizing: border-box;
+}
+
+/* 4 columns layout */
+@media (max-width: 1600px) {
+    .Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses {
+        flex: 0 1 calc(25% - 20px); /* 25% width for 4 columns */
     }
 }
 
-@media (max-width: 768px) {
-    .Incoming.email.recipients, .Junk.mail.counts, .Geoip.results, .Qpsmtpd.codes.league.table, .Viruses.found {
-        flex: 0 1 calc(50% - 20px); /* 50% width for smaller screens (2 columns)*/
+/* 3 columns layout */
+@media (max-width: 1200px) {
+    .Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses {
+        flex: 0 1 calc(33.333% - 20px); /* 33.333% width for 3 columns */
     }
 }
 
-@media (max-width: 480px) {
-    .Incoming.email.recipients, .Junk.mail.counts, .Geoip.results, .Qpsmtpd.codes.league.table, .Viruses.found {
-        flex: 0 1 100%; /* 100% width for mobile screens (1 column) */
+/* 2 columns layout */
+@media (max-width: 600px) {
+    .Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses {
+        flex: 0 1 calc(50% - 20px); /* 50% width for 2 columns */
+    }
+}
+
+/* 1 column layout for mobile */
+@media (max-width: 300px) {
+    .Incoming, .Junk, .Geoip, .Qpsmtpd, .Viruses {
+        flex: 0 1 100%; /* 100% width for 1 column */
     }
 }
