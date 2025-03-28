@@ -39,9 +39,9 @@
    	<div style="width:100%;overflow-x:auto;font-size:1cqw">
 		<!---Navigation here-->
 		<div class='linksattop'>
-			<a class='prevlink' href='http://${DomainName}/mailstats/mailstats_for_${PreviousDate}.html'>Previous</a>
-			<div class='divshowindex'><a class='showindex' href='http://${DomainName}/mailstats/'>Index of files</a></div>
-			<a class='nextlink' href='http://${DomainName}/mailstats/mailstats_for_${NextDate}.html'>Next</a></div> <!--format important here - used to insert see in browser for email -->
+			<a class='prevlink' href='http://${SystemName}.${DomainName}/mailstats/mailstats_for_${PreviousDate}.html'>Previous</a>
+			<div class='divshowindex'><a class='showindex' href='http://${SystemName}.${DomainName}/mailstats/'>Index of files</a></div>
+			<a class='nextlink' href='http://${SystemName}.${DomainName}/mailstats/mailstats_for_${NextDate}.html'>Next</a></div> <!--format important here - used to insert see in browser for email -->
     <br />
     <h2>${structure:title}</h2>
     <br />

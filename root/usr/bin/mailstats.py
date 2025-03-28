@@ -1136,8 +1136,9 @@ if __name__ == "__main__":
 	ConfigDB = read_config_file(db_dir+"configuration")
 
 	DomainName = get_value(ConfigDB, "DomainName", "type") 							#'bjsystems.co.uk' #  $cdb->get('DomainName')->value;
+	SystemName = get_value(ConfigDB, "SystemName", "type")
 	
-	hello_string = "Mailstats:"+Mailstats_version+' for '+DomainName+" for "+analysis_date+" Printed at:"+formatted_datetime
+	hello_string = "Mailstats:"+Mailstats_version+' for '+SystemName+"."+DomainName+" for "+analysis_date+" Printed at:"+formatted_datetime
 	print(hello_string)
 	version_string = "Chameleon:"+chameleon_version+" Python:"+python_version
 	if isThonny:
@@ -1687,6 +1688,7 @@ if __name__ == "__main__":
 										PreviousDate=previous_date_str,
 										NextDate=next_date_str,
 										DomainName=DomainName,
+										SystemName=SystemName
 										)
 		except Exception as e:
 			print(f"Chameleon template Exception {e}")
@@ -1783,7 +1785,7 @@ if __name__ == "__main__":
 			filepath = html_page_dir+"mailstats_for_"+analysis_date+".html"
 			html_content = read_html_from_file(filepath)
 			# Replace the Navigation by a "See in browser" prompt
-			replace_str = f"<div class='divseeinbrowser' style='text-align:center;'><a class='seeinbrowser' href='http://{DomainName}/mailstats/mailstats_for_{analysis_date}.html'>See in browser</a></div>"
+			replace_str = f"<div class='divseeinbrowser' style='text-align:center;'><a class='seeinbrowser' href='http://{SystemName}.{DomainName}/mailstats/mailstats_for_{analysis_date}.html'>See in browser</a></div>"
 			html_content = replace_between(html_content, "<div class='linksattop'>", ">Next</a></div>", replace_str)
 			if not noemailfile:
 				# Write out the email html to a web page
