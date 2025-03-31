@@ -10,6 +10,7 @@
 	$OUT .="\n";
 	$OUT .= qq(
 	# Alias for mailstats
+	Alias "/mailstats/js" "/opt/mailstats/js"
 	Alias "/mailstats/css" "/opt/mailstats/css"
 	Alias "/mailstats" "/opt/mailstats/html"
 
@@ -29,6 +30,11 @@
 		AllowOverride None
 		Require all granted
 	</Directory>
+
+	<Directory "/opt/mailstats/js">
+		AllowOverride None
+		Require all granted
+	</Directory>
 	);
 
   }
@@ -37,4 +43,3 @@
       $OUT .= "# mailstats is disabled";
     }
 }
-

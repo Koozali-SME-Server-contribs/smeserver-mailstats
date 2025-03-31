@@ -202,3 +202,9 @@ p.cssvalid,p.htmlvalid {float:left;margin-right:20px}
         flex: 0 1 100%; /* 100% width for 1 column */
     }
 }
+
+/* Taken from inline in the chameleon templates */
+.maindiv {width:100%;overflow-x:auto;font-size:1cqw}
+.traffictable {border-collapse:collapse;width:98%}
+.divseeinbrowser{text-align:center;}
+.bordercollapse{border-collapse:collapse;}

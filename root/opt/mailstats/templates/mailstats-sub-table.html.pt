@@ -6,7 +6,7 @@
 	<tal:block condition="threshold == 0">
 		<br>
 	</tal:block>
-    <table style="border-collapse:collapse;">
+    <table class="bordercollapse">
         <thead>
             <tr>
                 <th tal:repeat="header column_headers">${header}</th>

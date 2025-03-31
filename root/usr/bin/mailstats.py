@@ -56,14 +56,15 @@
 # pip3 install numpy
 # pip3 install plotly
 # pip3 install pandas
+# pip3 install matplotlib
 #
 # Rocky8: (probably - not yet checked this)
 #
 # dnf install python3-chameleon --enablerepo=epel
 # dnf install html2text --enablerepo=epel
+# dnf install python3-matplotlib
 # pip3 install numpy
 # pip3 pymysql
-# pip3 install plotly
 # pip3 install pandas
 #
 #
@@ -89,6 +90,12 @@ import plotly.express as px
 import colorsys
 import pymysql
 import json
+enable_graphs = True;
+try:
+	import matplotlib.pyplot as plt
+except ImportError:
+	print("Matplotlib is not installed  - no graphs")
+	enable_graphs = False;
 
 Mailstats_version = '1.2'
 build_date_time = "2024-06-18 12:03:40OURCE" 
@@ -129,251 +136,145 @@ PERCENT = TOTALS + 1
 ColTotals = 24
 ColPercent = 25
 
-
-def sanitize_and_filter_data_for_stacked_bar(data2d, xLabels, yLabels, exclude_columns_labels, exclude_rows_labels):
+def transform_to_dict(data, keys, iso_date):
     """
-    Sanitize data by removing unwanted columns and rows, and converting to numeric values.
-    
-    Parameters:
-    - data2d (list of lists): A 2D list containing the data.
-    - xLabels (list): Current labels for the x-axis.
-    - yLabels (list): Current labels for the y-axis.
-    - exclude_columns_labels (list): Labels of columns to exclude from the data and x-axis.
-    - exclude_rows_labels (list): Labels of rows to exclude from the y-axis.
-    
+    Transforms a 26x17 list of lists into a list of dictionaries with specified keys.
+
+    Args:
+        data (list): A 26x17 list of lists.
+        keys (list): A 1D array specifying the keys for the dictionaries.
+        iso_date (str): A date in ISO format to prepend to each row number.
+
     Returns:
-    - numpy.ndarray: Sanitized 2D numpy array with numeric data.
-    - list: Filtered x-axis labels.
-    - list: Filtered y-axis labels.
+        list: A list of dictionaries with transformed data.
     """
-    def to_numeric(value):
-        try:
-            if isinstance(value, str):
-                # Remove any extra characters like '%' and convert to float
-                return float(value.replace('%', '').strip())
-            else:
-                return float(value)
-        except ValueError:
-            return 0.0  # Default to 0 if conversion fails
-
-    # Filter out columns based on their labels
-    exclude_columns_indices = [xLabels.index(label) for label in exclude_columns_labels if label in xLabels]
+    # Validate input dimensions
+    if len(data) != 26:
+        raise ValueError("Input data must have 26 rows.")
+    if len(keys) != len(data[0]):  # Account for the new column
+        raise ValueError(f"Keys must match the number of columns after transformation {len(keys)} {len(data[0])}")
     
-    filtered_data2d = [
-        [to_numeric(value) for idx, value in enumerate(row) if idx not in exclude_columns_indices]
-        for row in data2d
-    ]
+    # Remove rows 25 and 26
+    filtered_data = data[:24]
     
-    filtered_xLabels = [label for idx, label in enumerate(xLabels) if idx not in exclude_columns_indices]
-    
-    # Filter out rows based on their labels
-    filtered_data2d = [row for label, row in zip(yLabels, filtered_data2d) if label not in exclude_rows_labels]
-    filtered_yLabels = [label for label in yLabels if label not in exclude_rows_labels]
-    
-    # Convert filtered data to numpy array
-    return np.array(filtered_data2d), filtered_xLabels, filtered_yLabels
-      
-def generate_distinct_colors(num_colors):
-    """Generate distinct colors using HSV color space."""
-    colors = []
-    for i in range(num_colors):
-        hue = i / num_colors
-        saturation = 0.7
-        value = 0.9
-        r, g, b = colorsys.hsv_to_rgb(hue, saturation, value)
-        colors.append(f'rgb({int(r * 255)},{int(g * 255)},{int(b * 255)})')
-    return colors
+    # and same for keys
+    modified_keys = keys[1:-2]
 
-def create_stacked_bar_graph(data2d, xLabels, yLabels, save_path='stacked_bar_graph.html'):
-    """
-    Creates and saves a stacked bar graph from given 2D numpy array data using Plotly.
-    
-    Parameters:
-    - data2d (list of lists or numpy.ndarray): A 2D list or numpy array containing the data.
-    - xLabels (list): A list of category labels for the x-axis.
-    - yLabels (list): A list of labels for the y-axis (e.g., hours).
-    - save_path (str): The path where the plot image will be saved.
-    """
-    # Identify columns to be removed based on their headers (label names) and indices (hours 24 and 25)
-    exclude_columns_labels = ["Count", "PERCENT","TOTALS"]
-    exclude_rows_labels = ["24:00", "25:00"]
+    # Add new column with ISO date and row number
+    transformed_data = []
+    for i, row in enumerate(filtered_data):
+        new_column_value = f"{i}"  #f"{iso_date},{i}"
+        transformed_row = [new_column_value] + row[1:-2]  # Remove first and last two columns
+        transformed_data.append(transformed_row)
 
-    # Ensure input yLabels correspond to the data
-    if len(yLabels) != len(data2d):
-        raise ValueError(f"The length of yLabels {len(yLabels)} must match the number of rows in the data {len(data2d)}.")
-    
-    # Sanitize and filter the data
-    sanitized_data, filtered_xLabels, filtered_yLabels = sanitize_and_filter_data_for_stacked_bar(data2d, xLabels, yLabels, exclude_columns_labels, exclude_rows_labels)
-    
-    # Ensure that the length of yLabels matches the number of rows (0 to n should be n+1 rows)
-    if len(filtered_yLabels) != sanitized_data.shape[0]:
-        raise ValueError(f"The length of filtered_yLabels {len(filtered_yLabels)} must match the number of rows in the data {sanitized_data.shape[0]}.")
-    
-    # Transpose the data so that hours are on the x-axis and categories are stacked in the y-axis
-    transposed_data = sanitized_data.T
-    
-    fig = go.Figure()
-    
-    # Get unique colors for each category
-    extended_colors = generate_distinct_colors(len(filtered_xLabels))
-    
-    for i, category in enumerate(filtered_xLabels):
-        fig.add_trace(go.Bar(
-            name=category,
-            x=filtered_yLabels,
-            y=transposed_data[i],
-            marker_color=extended_colors[i % len(extended_colors)]  # Cycle through the colors if there are more categories than colors
+    # Convert each row into a dictionary using supplied keys
+    result = [dict(zip(["Time"] + modified_keys, row)) for row in transformed_data]
 
-        ))
-    
-    fig.update_layout(
-        barmode='stack',
-        title='Stacked Bar Graph by Hour',
-        xaxis=dict(title='Hour'),
-        yaxis=dict(title='Values'),
-        legend_title_text='Categories',
-        margin = {
-            'l': 50,  #left margin
-            'r': 120, #right margin
-            't': 50,  #top margin
-            'b': 50   #bottom margin
-        }
- 
-    )
-    
-    # Save the graph to an HTML file
-    fig.write_html(save_path)
-    # Write it to a var and return the string
-    graph_html = fig.to_html(full_html=False,include_plotlyjs='https://cdn.plot.ly/plotly-latest.min.js')
-    return graph_html
- 
-def sanitize_and_filter_data(data2d, exclude_labels, xLabels):
-    """
-    Sanitize data by removing unwanted columns and converting to numeric values.
-    
-    Parameters:
-    - data2d (list of lists): A 2D list containing the data.
-    - exclude_labels (list): Labels to exclude from the data and x-axis.
-    - xLabels (list): Current labels for the x-axis.
-    
-    Returns:
-    - numpy.ndarray: Sanitized 2D numpy array with numeric data.
-    - list: Filtered x-axis labels.
-    """
-    def to_numeric(value):
-        try:
-            if isinstance(value, str):
-                # Remove any extra characters like '%' and convert to float
-                return float(value.replace('%', '').strip())
-            else:
-                return float(value)
-        except ValueError:
-            return 0.0  # Default to 0 if conversion fails
+    return result
 
-    # Create a boolean array for columns to keep (not in exclude_labels)
-    columns_to_keep = [label not in exclude_labels for label in xLabels]
 
-    # Filter out the columns both from the data and xLabels
-    filtered_data2d = []
-    for row in data2d:
-        filtered_row = [to_numeric(value) for keep, value in zip(columns_to_keep, row) if keep]
-        filtered_data2d.append(filtered_row)
+def create_graph(data_dict, graph_type="line", output_file="graph.png",iso_date='1970-01-01'):
+	"""
+	Creates a graph from nested list data with hours as x-axis.
 
-    filtered_xLabels = [label for label, keep in zip(xLabels, columns_to_keep) if keep]
+	Args:
+		data_dict (list): List structure where:
+			- Each element is a list representing hour data
+			- First element is the hour (0-23)
+			- Remaining elements are counts for different types/categories
+		graph_type (str): Type of graph to create ("line", "bar", "scatter", "pie").
+		output_file (str): Path to save the image file.
+	"""
+	# Check if data is empty
+	if not data_dict:
+		raise ValueError("Input data cannot be empty")
 
-    return np.array(filtered_data2d), filtered_xLabels
+	# Extract hours (from the "NewColumn" key)
+	hours = [row["Time"] for row in data_dict]  # First column is the ISO date + row number
 
-def create_heatmap(data2d, xLabels, yLabels, save_path='heatmap.html'):
-    """
-    Creates and saves a heatmap from given 2D numpy array data using Plotly.
-    Parameters:
-    - data2d (list of lists or numpy.ndarray): A 2D list or numpy array containing the data.
-    - xLabels (list): A list of category labels for the x-axis.
-    - yLabels (list): A list of labels for the y-axis (e.g., hours).
-    - save_path (str): The path where the plot image will be saved.
-    """
-    excluded_columns = ["Count", "PERCENT", "TOTALS"]
-    # Remove rows 24 and 25 by slicing the data and labels
-    data2d = data2d[:24]
-    yLabels = yLabels[:24]  # Ensure yLabels also excludes those rows
+	# Extract types (keys excluding "NewColumn")
+	types = [key for key in data_dict[0].keys() if key != "Time"]  # Dynamically get keys except "NewColumn"
 
-    # Sanitize and filter the data
-    sanitized_data, filtered_xLabels = sanitize_and_filter_data(data2d, excluded_columns, xLabels)
+	# Extract counts for each type
+	counts = {typ: [row[typ] for row in data_dict] for typ in types}
 
-    # Ensure that the length of yLabels matches the number of rows (0 to n should be n+1 rows)
-    if len(yLabels) != sanitized_data.shape[0]:
-        raise ValueError("The length of yLabels must match the number of rows in the data.")
+	plt.figure(figsize=(10, 6))  # Create a figure
 
-    # Create the heatmap
-    # Define a custom color scale where 0 is white
-    color_scale = [
-        [0, "lightgrey"],
-        [0.3, "blue"],
-        [0.6, 'green'],
-        [0.75,'yellow'],
-        [1,'red']
-    ]
-    fig = px.imshow(sanitized_data,
-                    labels=dict(x="Category", y="Hour", color="Count"),
-                    x=filtered_xLabels,
-                    y=yLabels,                  
-                    color_continuous_scale=color_scale)
-    
-    fig.update_layout(
-        title='Heatmap of Counts by Category per Hour',
-        xaxis_nticks=len(filtered_xLabels),
-        yaxis_nticks=len(yLabels),
-        margin=dict(l=0, r=0, t=30, b=0)
+	# Generate different types of graphs based on the input parameter
+	if graph_type == "line":
+		for typ in types:
+			plt.plot(hours, counts[typ], label=typ, marker='o')
+		plt.title(f"Line Graph for {iso_date}")
+		plt.xlabel("Hours")
+		plt.ylabel("Counts")
 
-    )
-    fig.update_xaxes(showticklabels=True, side='bottom', showline=True, linewidth=2, linecolor='black', mirror=True)
-    fig.update_yaxes(showticklabels=True, showline=True, linewidth=2, linecolor='black', mirror=True)
-   
-    fig.write_html(save_path)  
-    # Write it to a var and return the string
-    graph_html = fig.to_html(full_html=False,include_plotlyjs='https://cdn.plot.ly/plotly-latest.min.js')
-    return graph_html
-  
-   
-def create_line_chart(data2d, xLabels, yLabels, save_path='line_chart.html'):
-    fig = go.Figure()
-    
-    excluded_columns = ["Count", "PERCENT", "TOTALS"]
-    # Remove rows 24 and 25 by slicing the data and labels
-    data2d = data2d[:24]
-    yLabels = yLabels[:24]  # Ensure yLabels also excludes those rows
+	elif graph_type == "bar":
+		bottom = [0] * len(hours)
+		for typ in types:
+			plt.bar(hours, counts[typ], bottom=bottom, label=typ)
+			bottom = [b + y for b, y in zip(bottom, counts[typ])]
+		plt.title(f"Bar Graph for {iso_date}")
+		plt.xlabel("Hours")
+		plt.ylabel("Counts")
 
-    # Sanitize and filter the data
-    sanitized_data, filtered_xLabels = sanitize_and_filter_data(data2d, excluded_columns, xLabels)
+	elif graph_type == "scatter":
+		for typ in types:
+			plt.scatter(hours, counts[typ], label=typ)
+		plt.title(f"Scatter Plot for {iso_date}")
+		plt.xlabel("Hours")
+		plt.ylabel("Counts")
 
-    # Ensure that the length of yLabels matches the number of rows (0 to n should be n+1 rows)
-    if len(yLabels) != sanitized_data.shape[0]:
-        raise ValueError("The length of yLabels must match the number of rows in the data.")
+	elif graph_type == "pie":
+		total_counts = {typ: sum(counts[typ]) for typ in types}
+		total_sum = sum(total_counts.values())
+		threshold_percent = 0.01 * total_sum
 
-    # Remove rows with all zero elements and the corresponding categories
-    nonzero_rows_indices = np.where(~np.all(sanitized_data == 0, axis=0))[0]  # find rows with non-zero elements
-    sanitized_data = sanitized_data[:, nonzero_rows_indices]
-    filtered_xLabels = [filtered_xLabels[i] for i in nonzero_rows_indices]  # update filtered_xLabels
+		# Separate filtered counts and "Other" counts
+		filtered_counts = {}
+		other_total = 0
 
-    for i, category in enumerate(filtered_xLabels):
-        fig.add_trace(go.Scatter(
-            mode='lines+markers',
-            name=category,
-            x= [f'{j:02d}:00' for j in range(sanitized_data.shape[0])],  
-            y=sanitized_data[:, i]
-        ))
+		for typ, value in total_counts.items():
+			if value > 0 and value >= threshold_percent:
+				filtered_counts[typ] = value
+			else:
+				other_total += value
 
-    fig.update_layout(
-        title='Line Chart of Counts by Category per Hour',
-        xaxis=dict(title='Hour'),
-        yaxis=dict(title='Count'),
-        legend_title_text='Category'
-    )
-    
-    fig.write_html(save_path)
-    # Write it to a var and return the string
-    graph_html = fig.to_html(full_html=False,include_plotlyjs='https://cdn.plot.ly/plotly-latest.min.js')
-    return graph_html
+		# Add "Other" category if there are values below the threshold
+		if other_total > 0:
+			filtered_counts["Other"] = other_total
+
+		# Prepare data for the pie chart
+		labels = filtered_counts.keys()
+		sizes = filtered_counts.values()
+
+		# Plot the pie chart
+		plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+		plt.title(f"Pie Chart for {iso_date}")
+
+	else:
+		raise ValueError(f"Unsupported graph type: {graph_type}")
+
+	if graph_type != "pie":
+		plt.xticks(hours)
+		plt.grid(alpha=0.3)
+		plt.legend()
+
+	# Save the graph to a file
+	plt.tight_layout()
+	plt.savefig(output_file)
+	plt.close()
+
+# def convert_to_numeric(data):
+    # """
+    # Converts all values in a nested list or dictionary to numeric types (int or float).
+    # """
+    # for i in range(len(data)):
+        # for j in range(1, len(data[i])):  # Skip the first column (hour)
+            # try:
+                # data[i][j] = float(data[i][j])  # Convert to float
+            # except ValueError:
+                # raise ValueError(f"Non-numeric value found: {data[i][j]}")
+    # return data
 
 def save_summaries_to_db(cursor, conn, date_str, hour, parsed_data):
     # Convert parsed_data to JSON string
@@ -529,6 +430,8 @@ def read_in_relevant_log_file(file_path,analysis_date=yesterday):
 					timestamp = timestamp.replace(year=yesterday_year)
 				except (ValueError, TypeError) as e:
 					print(f"Error {e} line {line_count} on timestamp extract {timestamp_str}:{entry[1]}")
+					ignore_record_count += 1
+					continue
 				#print(f"Stamps: {timestamp.date()} {analysis_date.date()}")
 				if timestamp.date() == analysis_date.date():
 					log_entries.append((timestamp, entry[1]))
@@ -571,7 +474,7 @@ def parse_data(data):
 #		for part in fields:
 #			print(f"{i}: {part}")
 #			i  = i +1
-#		quit()
+#		(quit)()
 	# and mapping:
 	try:
 		return_dict = {
@@ -861,7 +764,7 @@ def read_html_from_file(filepath):
 	# Read in CSS 
 	with open(css_path, 'r', encoding='utf-8') as file:
 		css_contents = file.read()
-	html_contents = insert_string_after(html_contents,"\n"+css_contents,"<!--css here-->")
+	html_contents = insert_string_after(html_contents,"\n<style>"+css_contents+"</style>","<!--css here-->")
 	return html_contents
 	
 def read_text_from_file(filepath):
@@ -1643,7 +1546,7 @@ if __name__ == "__main__":
 				connection_type_counts[connection_type] += 1
 				#print(f"Count:{connection_type_counts[connection_type]}")
 				continue
-			
+	
 
 	#Compute next and previous dates
 	day_format = "%Y-%m-%d"
@@ -1658,10 +1561,27 @@ if __name__ == "__main__":
 	previous_date_str = previous_date.strftime(day_format)
 
 	# Create graphs of data
-	yLabels = [f'{i:02d}:00' for i in range(len(columnCounts_2d))]
-	stacked_Bar_html = create_stacked_bar_graph(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'stacked_bar_'+analysis_date+'.html')
-	heatmap_html = create_heatmap(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'heatmap_'+analysis_date+'.html')
-	line_graph_html = create_line_chart(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'line_graph_'+analysis_date+'.html')
+	
+	# yLabels = [f'{i:02d}:00' for i in range(len(columnCounts_2d))]
+	# stacked_Bar_html = create_stacked_bar_graph(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'stacked_bar_'+analysis_date+'.html')
+	# heatmap_html = create_heatmap(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'heatmap_'+analysis_date+'.html')
+	# line_graph_html = create_line_chart(columnCounts_2d,columnHeaders,yLabels,html_page_dir+'line_graph_'+analysis_date+'.html')
+	
+	columnCounts_2d_dict = transform_to_dict(columnCounts_2d,columnHeaders,analysis_date)
+
+	#Export as json for testing		
+	# with open("/opt/mailstats/html/colCounts_2d.json", "w") as json_file:
+		# json.dump(columnCounts_2d, json_file)
+	# with open("/opt/mailstats/html/colCounts_2d-dict", "w") as json_file:
+		# json.dump(columnCounts_2d_dict, json_file)
+	# with open("/opt/mailstats/html/keys.json", "w") as json_file:
+		# json.dump(columnHeaders, json_file)
+
+	if enable_graphs:
+		create_graph(columnCounts_2d_dict, "line", html_page_dir+"line_graph_"+analysis_date+".png",analysis_date)
+		create_graph(columnCounts_2d_dict, "bar", html_page_dir+"bar_graph_"+analysis_date+".png",analysis_date)
+		create_graph(columnCounts_2d_dict, "scatter", html_page_dir+"scatter_graph_"+analysis_date+".png",analysis_date)
+		create_graph(columnCounts_2d_dict, "pie", html_page_dir+"pie_chart_"+analysis_date+".png",analysis_date)
 
 	#Now apply the results to the chameleon template - main table
 	# Path to the template file
@@ -1682,13 +1602,11 @@ if __name__ == "__main__":
 										reporting_date=analysis_date, title=html_title, 
 										version=version_string,
 										nolinks=nolinks,
-										stacked_bar_graph=stacked_Bar_html,
-										heatmap=heatmap_html,
-										line_graph=line_graph_html,
 										PreviousDate=previous_date_str,
 										NextDate=next_date_str,
 										DomainName=DomainName,
-										SystemName=SystemName
+										SystemName=SystemName,
+										enable_graphs=enable_graphs
 										)
 		except Exception as e:
 			print(f"Chameleon template Exception {e}")
@@ -1785,7 +1703,7 @@ if __name__ == "__main__":
 			filepath = html_page_dir+"mailstats_for_"+analysis_date+".html"
 			html_content = read_html_from_file(filepath)
 			# Replace the Navigation by a "See in browser" prompt
-			replace_str = f"<div class='divseeinbrowser' style='text-align:center;'><a class='seeinbrowser' href='http://{SystemName}.{DomainName}/mailstats/mailstats_for_{analysis_date}.html'>See in browser</a></div>"
+			replace_str = f"<div class='divseeinbrowser'><a class='seeinbrowser' href='http://{SystemName}.{DomainName}/mailstats/mailstats_for_{analysis_date}.html'>See in browser</a></div>"
 			html_content = replace_between(html_content, "<div class='linksattop'>", ">Next</a></div>", replace_str)
 			if not noemailfile:
 				# Write out the email html to a web page

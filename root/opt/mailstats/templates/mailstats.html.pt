@@ -4,39 +4,10 @@
 	<title>SMEServer Mailstats</title>
 	<link rel='stylesheet' type='text/css' href='css/mailstats.css' />
 	<!-- Check links -->
-	<script>
-		function LinkCheck(url){
-			var http = new XMLHttpRequest();
-			http.open('HEAD', url, false);
-			http.send();
-			return http.status!=404;
-		}
-		function doNavs() {
-			var aTags = document.getElementsByTagName('a'),
-				atl = aTags.length,i;
-			for (i = 0; i < atl; i++) {
-				if (aTags[i].innerText == "Previous") {
-					if (!LinkCheck(aTags[i].href)) { 
-						aTags[i].style.visibility = "hidden";
-					} else {
-						aTags[i].style.visibility = "visible";
-					}
-				} else if (aTags[i].innerText == "Next") {
-					if (!LinkCheck(aTags[i].href)) { 
-						aTags[i].style.visibility = "hidden";
-					} else {
-						aTags[i].style.visibility = "visible";
-					}
-				}
-			}
-		}
-	</script>
-	<style>
 	<!--css here-->
-	</style>
 </head>
 <body>
-   	<div style="width:100%;overflow-x:auto;font-size:1cqw">
+   	<div class=maindiv>
 		<!---Navigation here-->
 		<div class='linksattop'>
 			<a class='prevlink' href='http://${SystemName}.${DomainName}/mailstats/mailstats_for_${PreviousDate}.html'>Previous</a>
@@ -54,127 +25,82 @@
     <br />
     <!--Tabs -->
     <div class="tab-container">
-    <div class="tab tab-active" data-index="0" onclick="openTab(event, 'tab1')">Table</div>
-    <div class="tab" data-index="1" onclick="openTab(event, 'tab2')">Stacked Bar Graph</div>
-    <div class="tab" data-index="2" onclick="openTab(event, 'tab3')">Heat Map</div>
-    <div class="tab" data-index="3" onclick="openTab(event, 'tab4')">Line Graph</div>
+		<div class="tab tab-active" data-index="0" >Table</div>
+		<div tal:condition="enable_graphs" class="tab" data-index="1">Line Graph</div>
+		<div tal:condition="enable_graphs" class="tab" data-index="2">Stacked Bar Graph</div>
+		<div tal:condition="enable_graphs" class="tab" data-index="3">Scatter Graph</div>
+		<div tal:condition="enable_graphs" class="tab" data-index="4">Pie Chart</div>
     </div>
 
-	<div id="tab1" class="tab-content tab-content-active">
-	<div class = "maintable">
-	<table style="border-collapse:collapse;width:98%">
-		<thead>
-			<tr>
-				<th>Date/Time</th>
-				<th tal:repeat="header column_headers" tal:content="header">Header</th>
-			</tr>
-		</thead>
-		<tbody>
-			<tr tal:repeat="row array_2d" tal:attributes="class python: 'row-total' if repeat.row.index == 24  else 'row-percent' if repeat.row.index == 25 else None">
-				<td tal:condition="repeat.row.index == 24" tal:attributes="class python:'col-total'" tal:content="'TOTALS'">Totals</td>
-				<td tal:condition="repeat.row.index == 25" tal:attributes="class python:'col-percent'" tal:content="'PERCENT'">Percent</td>
-				<td tal:condition="repeat.row.index < 24" tal:content="string:${reporting_date}, ${repeat.row.index}">Hour</td>
-                <td tal:repeat="cell row" tal:attributes="class python: 'col-' + str(repeat.cell.index)">
-                    <!-- Check if 'nolinks' is true. If not, generate links for rows 0 to 23 except 'PERCENT' column -->
-                    <tal:case tal:condition="not: nolinks">
-                        <tal:case tal:condition="repeat.row.index >= 0 and repeat.row.index < 24 and repeat.cell.index != 16">
-                            <a tal:attributes="href string:./showSummaryLogs.php?date=${reporting_date}&hour=${repeat.row.index}">
-                                <!-- Check if cell value is zero and print "" -->
-                                <tal:case tal:condition="cell != 0" tal:content="cell">Cell</tal:case>
-                                <tal:case tal:condition="cell == 0" tal:content="''">-</tal:case>
-                            </a>
-                        </tal:case>
-                        <!-- For 'PERCENT' column or other rows, just display the cell content -->
-                        <tal:case tal:condition="not (repeat.row.index >= 0 and repeat.row.index < 24 and repeat.cell.index != 16)">
-                            <!-- Check if cell value is zero and print "" -->
-                            <tal:case tal:condition="cell != 0" tal:content="cell">Cell</tal:case>
-                            <tal:case tal:condition="cell == 0" tal:content="''">-</tal:case>
-                        </tal:case>
-                    </tal:case>
-                    <tal:case tal:condition="nolinks">
-                        <!-- Display cell content without link if 'nolinks' is true -->
-                        <tal:case tal:condition="cell != 0" tal:content="cell">Cell</tal:case>
-                        <tal:case tal:condition="cell == 0" tal:content="''">-</tal:case>
-                    </tal:case>
-                </td>
-        </tr>
-		</tbody>
-	</table>
-	</div>
-	</div>
-	<!-- Next Tab-->
-	<div id="tab2" class="tab-content">
-		<a href="stacked_bar_${reporting_date}.html">${structure: stacked_bar_graph}</a>
-	</div>
-	<!-- Next Tab-->
-	<div id="tab3" class="tab-content">
-		<a href="heatmap_${reporting_date}.html">${structure: heatmap}</a>
-	</div>
-	<!-- Next Tab-->
-	<div id="tab4" class="tab-content">
-		<a href="line_graph_${reporting_date}.html">${structure: line_graph}</a>
+	<div id="tab0" class="tab-content tab-content-active">
+		<div class = "maintable">
+			<table class="traffictable">
+				<thead>
+					<tr>
+						<th>Date/Time</th>
+						<th tal:repeat="header column_headers" tal:content="header">Header</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr tal:repeat="row array_2d" tal:attributes="class python: 'row-total' if repeat.row.index == 24  else 'row-percent' if repeat.row.index == 25 else None">
+						<td tal:condition="repeat.row.index == 24" tal:attributes="class python:'col-total'" tal:content="'TOTALS'">Totals</td>
+						<td tal:condition="repeat.row.index == 25" tal:attributes="class python:'col-percent'" tal:content="'PERCENT'">Percent</td>
+						<td tal:condition="repeat.row.index < 24" tal:content="string:${reporting_date}, ${repeat.row.index}">Hour</td>
+						<td tal:repeat="cell row" tal:attributes="class python: 'col-' + str(repeat.cell.index)">
+							<!-- Check if 'nolinks' is true. If not, generate links for rows 0 to 23 except 'PERCENT' column -->
+							<tal:case tal:condition="not: nolinks">
+								<tal:case tal:condition="repeat.row.index >= 0 and repeat.row.index < 24 and repeat.cell.index != 16">
+									<a tal:attributes="href string:./showSummaryLogs.php?date=${reporting_date}&hour=${repeat.row.index}">
+										<!-- Check if cell value is zero and print "" -->
+										<tal:case tal:condition="cell != 0" tal:content="cell">Cell</tal:case>
+										<tal:case tal:condition="cell == 0" tal:content="''">-</tal:case>
+									</a>
+								</tal:case>
+								<!-- For 'PERCENT' column or other rows, just display the cell content -->
+								<tal:case tal:condition="not (repeat.row.index >= 0 and repeat.row.index < 24 and repeat.cell.index != 16)">
+									<!-- Check if cell value is zero and print "" -->
+									<tal:case tal:condition="cell != 0" tal:content="cell">Cell</tal:case>
+									<tal:case tal:condition="cell == 0" tal:content="''">-</tal:case>
+								</tal:case>
+							</tal:case>
+							<tal:case tal:condition="nolinks">
+								<!-- Display cell content without link if 'nolinks' is true -->
+								<tal:case tal:condition="cell != 0" tal:content="cell">Cell</tal:case>
+								<tal:case tal:condition="cell == 0" tal:content="''">-</tal:case>
+							</tal:case>
+						</td>
+				</tr>
+				</tbody>
+			</table>
+		</div>
+		<div class = "subtables">
+			<div class="table-container">
+			<!---Add in sub tables here -->
+			</div>
+		</div>
 	</div>
 	
-	<div class = "subtables">
-		<div class="table-container">
-	<!---Add in sub tables here -->
-		</div>
-    </div>
-    <br />
-    
+	<!-- Next Tab-->
+	<div tal:condition="enable_graphs" id="tab1" class="tab-content">
+		<img src="line_graph_${reporting_date}.png">
+	</div>
+	<!-- Next Tab-->
+	<div tal:condition="enable_graphs" id="tab2" class="tab-content">
+		<img src="bar_graph_${reporting_date}.png">
+	</div>
+	<!-- Next Tab-->
+	<div tal:condition="enable_graphs" id="tab3" class="tab-content">
+		<img src="scatter_graph_${reporting_date}.png">
+	</div>
+	<!-- Next Tab-->
+	<div tal:condition="enable_graphs" id="tab4" class="tab-content">
+		<img src="pie_chart_${reporting_date}.png">
+	</div>	
+	<br />
+		
     <footer class="footer">${version}</footer>
-    
-	<script>
-		window.onload = function(){doNavs();} 
-		//function openTab(event, tabId){
-		//// Get all elements with class="tab-content" and hide them
-		//const tabContents = document.querySelectorAll('.tab-content');
-		//tabContents.forEach(content => content.classList.remove('tab-content-active'));
 
-		//// Get all elements with class="tab" and remove the class "tab-active"
-		//const tabs = document.querySelectorAll('.tab');
-		//tabs.forEach(tab => tab.classList.remove('tab-active'));
-
-		//// Show the current tab content, and add an "active" class to the clicked tab
-		//document.getElementById(tabId).classList.add('tab-content-active');
-		//event.target.classList.add('tab-active');}
-		
-		function openTab(evt, tabName) {
-		// Declare all variables
-		var i, tab_content, tab;
-
-		// Get all elements with class="tab_content" and hide them
-		tab_content = document.getElementsByClassName("tab-content");
-		for (i = 0; i < tab_content.length; i++) {
-		tab_content[i].style.display = "none";
-		}
-
-		// Get all elements with class="tab" and remove the class "active"
-		tab = document.getElementsByClassName("tab");
-		for (i = 0; i < tab.length; i++) {
-		tab[i].className = tab[i].className.replace(" tab-active", "");
-		}
-
-		// Show the current tab, and add an "active" class to the link that opened the tab
-		document.getElementById(tabName).style.display = "block";
-		evt.currentTarget.className += " tab-active";
-
-		// Store the active tab index
-		sessionStorage.setItem('activeTab', evt.currentTarget.getAttribute("data-index"));
-		}
-
-		document.addEventListener("DOMContentLoaded", function() {
-		// Get the stored tab index from sessionStorage
-		let activeTab = sessionStorage.getItem('activeTab');
-
-		// If there's a stored tab, show that tab
-		if (activeTab !== null) {
-		document.querySelector(`[data-index="$${activeTab}"]`).click();
-		}
-		});
-
-		
-	</script> 
+	<script type='text/javascript' src='js/mailstats.js' ></script> 
 
 <!--	
 	<p class="cssvalid">

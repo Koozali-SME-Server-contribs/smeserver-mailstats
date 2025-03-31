@@ -21,9 +21,10 @@ BuildRequires: e-smith-devtools >= 1.13.1-03
 Requires: perl-Switch
 BuildRequires:  python36
 Requires:       python36
-Requires:		html2text
-Requires:		python3-chameleon
+Requires:	html2text
+Requires:	python3-chameleon
 Requires:       python3-mysql
+Requires:       python3-matplotlib
 AutoReqProv: no
 
 %description
@@ -126,7 +127,6 @@ sed -i "s|__BUILD_DATE_TIME__|$now|" $RPM_BUILD_ROOT/usr/bin/mailstats.py
 %pre
 /usr/bin/pip3 install -q pymysql
 /usr/bin/pip3 install -q numpy
-/usr/bin/pip3 install -q plotly
 /usr/bin/pip3 install -q pandas
 
 %clean
