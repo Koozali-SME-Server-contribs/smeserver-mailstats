@@ -91,4 +91,7 @@ CREATE TABLE IF NOT EXISTS `time` (
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 
-grant all privileges on mailstats.* to 'mailstats'@'localhost' identified by 'mailstats';
+CREATE USER 'mailstats'@'localhost' IDENTIFIED BY 'mailstats';
+GRANT ALL PRIVILEGES ON mailstats.* TO 'mailstats'@'localhost';
+FLUSH PRIVILEGES;
+
