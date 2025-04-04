@@ -91,12 +91,22 @@ import colorsys
 import pymysql
 import json
 from systemd import journal
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO,  # Default level of messages to log
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[
+                        logging.StreamHandler(),  # Log to console
+                        logging.FileHandler("/opt/mailstats/logs/mailstats.log")  # Log to a file
+                    ])
+
 
 enable_graphs = True;
 try:
 	import matplotlib.pyplot as plt
 except ImportError:
-	print("Matplotlib is not installed  - no graphs")
+	logging.info("Matplotlib is not installed  - no graphs")
 	enable_graphs = False;
 
 Mailstats_version = '1.2'
@@ -194,7 +204,6 @@ def get_logs_from_Journalctl(date='yesterday'):
 		# Convert times to microseconds for querying
 		since_microseconds = int(datetime.strptime(since, "%Y-%m-%d %H:%M:%S").timestamp() * 1_000_000)
 		until_microseconds = int(datetime.strptime(until, "%Y-%m-%d %H:%M:%S").timestamp() * 1_000_000)
-		print(f"{since_microseconds}  {until_microseconds} ")
 		
 		# Open the systemd journal
 		j = journal.Reader()
@@ -212,7 +221,6 @@ def get_logs_from_Journalctl(date='yesterday'):
 		for entry in j:
 			entry_timestamp = entry.get('__REALTIME_TIMESTAMP', None)
 			entry_microseconds = int(entry_timestamp.timestamp() * 1_000_000)
-			#print(f"{entry_microseconds}")
 			if entry_timestamp and since_microseconds <= entry_microseconds <= until_microseconds:
 				logs.append(entry)
 		
@@ -222,7 +230,7 @@ def get_logs_from_Journalctl(date='yesterday'):
 		return sorted_logs
 
 	except Exception as e:
-		print(f"Unexpected error: {e}")
+		logging.error(f"Unexpected error: {e}")
 		return {}
 
 
@@ -382,7 +390,7 @@ def save_summaries_to_db(cursor, conn, date_str, hour, parsed_data):
         conn.commit()
         count_records_to_db += 1
     except pymysql.Error as err:
-        print(f"DB Error {date_str} {hour} : {err}")
+        logging.error(f"DB Error {date_str} {hour} : {err}")
         conn.rollback()
                 
 def is_running_under_thonny():
@@ -483,7 +491,7 @@ def truncate_microseconds(timestamp):
 		# Combine the main part and truncated microseconds
 		truncated_timestamp = f"{main_part}.{truncated_microseconds}"
 	except Exception as e:
-		print(f"{e} {timestamp}")
+		logging.error(f"{e} {timestamp}")
 		raise ValueError
 	# Remove the microseconds completely if they exist
 	return truncated_timestamp.split('.')[0]
@@ -507,9 +515,8 @@ def read_in_relevant_log_file(file_path,analysis_date=yesterday):
 					entry = split_timestamp_and_data(Line)
 					# compare with anal date
 					timestamp_str = entry[0]; #truncate_microseconds(entry[0])
-					#print(f"Timestamp:{timestamp_str}")
 				except ValueError as e:
-					#print(f"ValueError {e} on timestamp create {timestamp_str}:{entry[0]} {entry[1]}")
+					logging.error(f"ValueError {e} on timestamp create {timestamp_str}:{entry[0]} {entry[1]}")
 					skip_record_count += 1
 					continue
 				# Parse the timestamp string into a datetime object
@@ -519,10 +526,9 @@ def read_in_relevant_log_file(file_path,analysis_date=yesterday):
 					# and add in gthe year of yesterday
 					timestamp = timestamp.replace(year=yesterday_year)
 				except (ValueError, TypeError) as e:
-					print(f"Error {e} line {line_count} on timestamp extract {timestamp_str}:{entry[1]}")
+					logging.error(f"Error {e} line {line_count} on timestamp extract {timestamp_str}:{entry[1]}")
 					ignore_record_count += 1
 					continue
-				#print(f"Stamps: {timestamp.date()} {analysis_date.date()}")
 				if timestamp.date() == analysis_date.date():
 					log_entries.append((timestamp, entry[1]))
 				else:
@@ -554,20 +560,11 @@ def parse_data(data):
 	# Adjust the field names and parsing logic according to your data format.
 	# Split at the backtick - before it fields split at space, after, fields split at tab
 	parts = data.split('`')
-	fields0 = ["",""]
+	fields0 = ["",""] #Add in dummy to make it the same as before, saves changing all the numbers below.
 	fields1 = parts[0].strip().split() if len(parts) > 0 else []
 	fields2 = parts[1].split('\t') if len(parts) > 1 else []
 	# then merge them
 	fields = fields0 + fields1 + fields2
-	print(f"{fields}")
-	#quit(1)
-#	if fields[4] == ''local'host':
-#		i = 0
-#		print(f"len:{len(fields)}")
-#		for part in fields:
-#			print(f"{i}: {part}")
-#			i  = i +1
-#		(quit)()
 	# and mapping:
 	try:
 		return_dict = {
@@ -593,7 +590,7 @@ def parse_data(data):
 			# Add more fields as necessary
 		}
 	except:
-		print(f"error:len:{len(fields)}")
+		logging.error(f"error:len:{len(fields)}")
 		return_dict = {}  
 	return return_dict
 
@@ -640,11 +637,11 @@ def check_html2text_installed():
 		if not html2text_path:
 			raise FileNotFoundError
 		
-		print(f"html2text is installed at: {html2text_path}")
+		logging.info(f"html2text is installed at: {html2text_path}")
 		return True
 
 	except subprocess.CalledProcessError:
-		print("html2text is not installed. Please install it using your package manager.", file=sys.stderr)
+		logging.error("html2text is not installed. Please install it using your package manager.", file=sys.stderr)
 		return False    
 
 def html_to_text(input_file, output_file):
@@ -663,9 +660,9 @@ def html_to_text(input_file, output_file):
 		with open(output_file, 'w', encoding='utf-8') as outfile:
 			outfile.write(result.stdout.decode('utf-8'))
 
-		print(f"Converted {input_file} to {output_file}")
+		logging.info(f"Converted {input_file} to {output_file}")
 	except subprocess.CalledProcessError as e:
-		print(f"Error occurred: {e.stderr.decode('utf-8')}", file=sys.stderr)
+		logging.error(f"Error occurred: {e.stderr.decode('utf-8')}", file=sys.stderr)
 		sys.exit(e.returncode)
 
 def get_html2text_version():
@@ -674,7 +671,7 @@ def get_html2text_version():
 		# Ensure the result is treated as a string in Python 3.6+
 		return result.stdout.strip()
 	except subprocess.CalledProcessError as e:
-		print(f"Error occurred while checking html2text version: {e}", file=sys.stderr)
+		logging.error(f"Error occurred while checking html2text version: {e}", file=sys.stderr)
 		return None
  
 def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, length=50, fill='█', print_end="\r"):
@@ -688,7 +685,7 @@ def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, lengt
 		decimals    - Optional : positive number of decimals in percent complete (Int)
 		length      - Optional : character length of bar (Int)
 		fill        - Optional : bar fill character (Str)
-		print_end   - Optional : end character (e.g. "\r", "\r\n") (Str)
+		logging.error(_end   - Optional : end character (e.g. "\r", "\r\n") (Str)
 	"""
 	if total == 0:
 		raise ValueError("Progress total is zero")
@@ -696,7 +693,7 @@ def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, lengt
 	filled_length = int(length * iteration // total)
 	bar = fill * filled_length + '-' * (length - filled_length)
 	print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=print_end)
-	# Print New Line on Complete
+	# logging.error( New Line on Complete
 	if iteration == total:
 		print()
  
@@ -711,7 +708,7 @@ def insert_string_after(original:str, to_insert:str, after:str) -> str:
 	"""
 	position = original.find(after)
 	if position == -1:
-		print(f"insert_string_after:({after}) string is not found in original")
+		logging.error(f"insert_string_after:({after}) string is not found in original")
 		return original
 	# Position of the insertion point
 	insert_pos = position + len(after)
@@ -735,7 +732,6 @@ def split_timestamp_and_data(log_entry: str) -> list:
 	else:
 		timestamp = None
 		rest_of_line = log_entry  # If no match, return the whole line
-	#print(f"ts:{timestamp}")
 	return [timestamp, rest_of_line]
 	
 def render_sub_table(table_title, table_headers, found_values, get_character=None, suppress_threshold=False):
@@ -782,14 +778,13 @@ def render_sub_table(table_title, table_headers, found_values, get_character=Non
 				raise ValueError("found_values must be either a list of numbers or a list of dictionaries.")
 		else:
 			raise TypeError("found_values must be a dictionary or a list.")
-		#print(f"Sub:{sub_result}")
 		sub_result.sort(key=lambda x: float(x[1]), reverse=True)  # Sort by percentage in descending order
 
 		# Dynamic threshold calculation
 		if not suppress_threshold:
 			dynamic_threshold = max(1, 100 / (original_total**0.5)) if original_total > 0 else 0
 			dynamic_threshold = round(dynamic_threshold,1)
-			print(f"Threshold for {table_title} set to {dynamic_threshold}% ")
+			logging.info(f"Threshold for {table_title} set to {dynamic_threshold}% ")
 		else:
 			dynamic_threshold=0
 		absolute_floor = 50  # Minimum absolute value threshold
@@ -851,7 +846,7 @@ def read_html_from_file(filepath):
 	# Need to add in here the contents of the css file at the end of the head section.
 	with open(filepath, 'r', encoding='utf-8') as file:
 		html_contents = file.read()
-	print("Reading from html file")
+	logging.info("Reading from html file")
 	# Get Filepath
 	css_path = os.path.dirname(filepath)+"/../css/mailstats.css"
 	# Read in CSS 
@@ -874,7 +869,7 @@ def read_text_from_file(filepath):
 		with open(filepath, 'r', encoding='utf-8') as file:
 			return file.read()
 	except:
-		print(f"{filepath} not found")
+		logging.error(f"{filepath} not found")
 		return
 
 def send_email(subject, from_email, to_email, smtp_server, smtp_port, HTML_content=None, Text_content=None, smtp_user=None, smtp_password=None):
@@ -1022,7 +1017,7 @@ def scan_mail_users():
                         junk_count = len(os.listdir(junk_mail_path))
                         total_junk_count += junk_count
                     except Exception as e:
-                        print(f"Error counting junk mails in {junk_mail_path} for user {user}: {e}")
+                        logging.error(f"Error counting junk mails in {junk_mail_path} for user {user}: {e}")
             if total_junk_count != 0:
                 users_info[user] = total_junk_count
     return users_info
@@ -1080,7 +1075,7 @@ def display_keys_and_values(data):
             print()  # Add a blank line between items
     else:
         raise ValueError("Input must be a list of dictionaries or a list of lists.")
-
+        
 def extract_blacklist_domain(text):
     match = re.search(r'http://www\.surbl\.org', text)
     if match:
@@ -1113,7 +1108,7 @@ if __name__ == "__main__":
 	try:
 		datetime.strptime(analysis_date, '%Y-%m-%d')
 	except ValueError:
-		print("Specify a valid date (yyyy-mm-dd) for the analysis")
+		logging.error("Specify a valid date (yyyy-mm-dd) for the analysis")
 		quit(1)
 
 	anaysis_date_obj = datetime.strptime(analysis_date, '%Y-%m-%d')
@@ -1134,12 +1129,13 @@ if __name__ == "__main__":
 	DomainName = get_value(ConfigDB, "DomainName", "type") 							#'bjsystems.co.uk' #  $cdb->get('DomainName')->value;
 	SystemName = get_value(ConfigDB, "SystemName", "type")
 	
-	hello_string = "Mailstats:"+Mailstats_version+' for '+SystemName+"."+DomainName+" for "+analysis_date+" Printed at:"+formatted_datetime
-	print(hello_string)
+	hello_string = "Mailstats:"+Mailstats_version+' for '+SystemName+"."+DomainName+" for "+analysis_date+" logging.error(ed at:"+formatted_datetime
+	logging.info(hello_string)
 	version_string = "Chameleon:"+chameleon_version+" Python:"+python_version
 	if isThonny:
 		version_string = version_string + "...under Thonny"
-	print(version_string)
+	logging.info(f"{version_string} and built on {build_date_time}")
+	
 
 	RHSenabled = get_value(ConfigDB, "qpsmtpd", "RHSBL","disabled") == "enabled"    #True  #( $cdb->get('qpsmtpd')->prop('RHSBL') eq 'enabled' );
 	DNSenabled = get_value(ConfigDB, "qpsmtpd", "DNSBL","disabled") == "enabled"  	#True  #( $cdb->get('qpsmtpd')->prop('DNSBL') eq 'enabled' );
@@ -1166,7 +1162,7 @@ if __name__ == "__main__":
 	
 	# Db save control
 	saveData = get_value(ConfigDB,"mailstats","SaveDataToMySQL","no") == 'yes' or forceDbSave
-	print(f"Save Mailstats to DB set:{saveData} ")
+	logging.info(f"Save Mailstats to DB set:{saveData} ")
 
 	if saveData:
 		# Connect to MySQL DB for saving
@@ -1213,12 +1209,12 @@ if __name__ == "__main__":
 				# Get the number of records deleted
 				rows_deleted = cursor.rowcount
 				if rows_deleted > 0:
-					print(f"Deleted {rows_deleted} rows for {analysis_date} ")
+					logging.info(f"Deleted {rows_deleted} rows for {analysis_date} ")
 			except pymysql.Error as e:
-				print(f"SQL Delete failed ({delete_query}) ({e}) ")
+				logging.error(f"SQL Delete failed ({delete_query}) ({e}) ")
 
 		except pymysql.Error as e:
-			print(f"Unable to connect to {DBName} on {DBHost} port {DBPort} error ({e}) ")
+			logging.error(f"Unable to connect to {DBName} on {DBHost} port {DBPort} error ({e}) ")
 			saveData = False
 	
 	nolinks = not saveData 
@@ -1249,11 +1245,11 @@ if __name__ == "__main__":
 	#log_file = logs_dir+'current.log'
 	#log_entries,skip_count,ignored_count = read_in_relevant_log_file(log_file,anaysis_date_obj)
 	log_entries = get_logs_from_Journalctl(analysis_date)
-	print(f"Found {len(log_entries)} entries in log for for {anaysis_date_obj.strftime('%Y-%m-%d')}")  #Ignored: {ignored_count} skipped: {skip_count}")
+	logging.info(f"Found {len(log_entries)} entries in log for for {anaysis_date_obj.strftime('%Y-%m-%d')}")  #Ignored: {ignored_count} skipped: {skip_count}")
 	summary_log_entries,skip_count = filter_summary_records(log_entries)
-	print(f"Found {len(summary_log_entries)} summary entries and skipped {skip_count} entries")
+	logging.info(f"Found {len(summary_log_entries)} summary entries and skipped {skip_count} entries")
 	sorted_log_dict = sort_log_entries(summary_log_entries)
-	print(f"Sorted {len(sorted_log_dict)} entries")
+	logging.info(f"Sorted {len(sorted_log_dict)} entries")
 	#quit(1)
 
 	columnHeaders = ['Count','WebMail','Local','MailMan','Relay','DMARC','Virus','RBL/DNS','Geoip.','Non.Conf.','Karma','Rej.Load','Del.Spam','Qued.Spam?','  Ham','TOTALS','PERCENT']
@@ -1312,7 +1308,7 @@ if __name__ == "__main__":
 	
 	if sorted_len > 0:
 		if isThonny:
-			# Initial call to print the progress bar
+			# Initial call to logging.error( the progress bar
 			print_progress_bar(0, sorted_len, prefix='Progress:', suffix='Complete', length=50)
 		for timestamp, data in sorted_log_dict.items():
 			i += 1
@@ -1325,12 +1321,8 @@ if __name__ == "__main__":
 			hour = dt.hour
 			# parse the data
 			parsed_data = parse_data(data)
-			#if parsed_data['id'] == '401103' or "401103" in data:
-			#	print(f"{parsed_data}")
-			#else:
 			#Take out the mailstats email
 			if 'mailstats' in parsed_data['from-email'] and DomainName in parsed_data['from-email']:
-				#print(f"{parsed_data}")
 				continue
 			# Save the data here if necessary
 			if saveData:
@@ -1355,9 +1347,7 @@ if __name__ == "__main__":
 			
 			# first spot the fetchmail and 'local' deliveries.
 			#Local send
-			#print(f"{DomainName} {parsed_data['sendurl']}")
 			if DomainName in parsed_data['sendurl']:
-				#print(f"{DomainName} {parsed_data['sendurl']}")
 				columnCounts_2d[hour][Local] += 1
 				columnCounts_2d[ColTotals][Local] += 1
 			#Relay or webmail
@@ -1492,14 +1482,13 @@ if __name__ == "__main__":
 				email = parsed_data["to-email"].replace('<', '').replace('>', '')
 				email = get_first_email_with_domain(email,DomainName)  # Extract email
 				if not email:
-					print(f"Incoming email with no internal email address: {email} {DomainName}")
+					logging.error(f"Incoming email with no internal email address: {email} {DomainName}")
 					email = "Unknown (no internal email found)"
 			else:
 				if not is_private_ip(parsed_data['ip']):
 					email = "Unknown (non conf?)"
 				else:
 					email = None
-			#print(f"{parsed_data['id']} {email} {action}")
 			if email:
 				record = next((item for item in recipients_found if item['email'] == email), None)
 				if not record:
@@ -1534,7 +1523,7 @@ if __name__ == "__main__":
 					else:
 						found_qpcodes[parsed_data['error-plugin']] += 1
 			if isThonny:
-				print() #seperate the [progress bar]
+				logging.error() #seperate the [progress bar]
 				
 	# Compute percentages
 	total_Count  = columnCounts_2d[ColTotals][TOTALS]
@@ -1582,7 +1571,6 @@ if __name__ == "__main__":
 	j = 0
 	log_len = len(log_entries)
 	connection_type_counts = defaultdict(int)
-	#print(f"Con:{connection_type_counts}")
 	if log_len > 0:
 		if isThonny:
 			print_progress_bar(0, log_len, prefix='Progress:', suffix='Complete', length=50)
@@ -1605,7 +1593,7 @@ if __name__ == "__main__":
 						IsInternal = False
 					continue
 			except Exception as e:
-				print(f" Helo pattern error {e} {data['MESSAGE']} {analysis_date}")
+				logging.error(f" Helo pattern error {e} {data['MESSAGE']} {analysis_date}")
 				continue
 					
 			#Pull out Geoip countries for analysis table
@@ -1618,7 +1606,7 @@ if __name__ == "__main__":
 					total_countries += 1
 					continue
 			except Exception as e:
-				print(f"Geoip pattern error {e} {data['MESSAGE']} {analysis_date}")
+				logging.error(f"Geoip pattern error {e} {data['MESSAGE']} {analysis_date}")
 				continue
 			
 			#Pull out DMARC approvals
@@ -1631,17 +1619,13 @@ if __name__ == "__main__":
 			match = connect_type_pattern.match(data['MESSAGE'])
 			if match:
 				connection_type = match.group(1)
-				#print(f"ct:{connection_type}")
 				connection_type_counts[connection_type] += 1
-				#print(f"Count:{connection_type_counts[connection_type]}")
 				continue
 				
 			match = tls_type_pattern.match(data['MESSAGE'])
 			if match:
 				connection_type = match.group(1)
-				#print(f"ct:{connection_type}")
 				connection_type_counts[connection_type] += 1
-				#print(f"Count:{connection_type_counts[connection_type]}")
 				continue
 	
 
@@ -1687,7 +1671,7 @@ if __name__ == "__main__":
 	with open(template_path, 'r') as template_file:
 		template_content = template_file.read()
 	#Use the hello string to create a suitable heading for the web page
-	html_title = hello_string.replace("Printed at"," <span class='greyed-out'>Printed at")
+	html_title = hello_string.replace("logging.error(ed at"," <span class='greyed-out'>logging.error(ed at")
 	html_title += "</span>"
 	
 	# Create a Chameleon template instance
@@ -1706,9 +1690,9 @@ if __name__ == "__main__":
 										enable_graphs=enable_graphs
 										)
 		except Exception as e:
-			print(f"Chameleon template Exception {e}")
+			logging.error(f"Chameleon template Exception {e}")
 	except Exception as e:
-		print(f"Chameleon render Exception {e}")
+		logging.error(f"Chameleon render Exception {e}")
 		
 	total_html = rendered_html
 	# Add in the header information
@@ -1742,7 +1726,6 @@ if __name__ == "__main__":
 
 	
 	#Recipient counts
-	#print(f"{recipients_found}")
 	recipient_count_headers = ["Email",'Queued','Rejected','Spam tagged','Accepted Percent']
 	recipient_count_title = 'Incoming email recipients'
 	rendered_html = render_sub_table(recipient_count_title,recipient_count_headers,recipients_found,suppress_threshold=True)
@@ -1778,7 +1761,7 @@ if __name__ == "__main__":
 		# Get a temporary file name
 		temp_file_name = tempfile.mktemp()
 		html_to_text(output_path+'.html',temp_file_name)
-		print(f"Rendered HTML saved to {temp_file_name}")
+		logging.info(f"Rendered HTML saved to {temp_file_name}")
 		# and save it if required
 		if not notextfile:
 			text_file_path = output_path+'.txt'
@@ -1789,7 +1772,7 @@ if __name__ == "__main__":
 	else:
 		text_file_path = ""
 	
-	print(f"Written {count_records_to_db} records to DB")
+	logging.info(f"Written {count_records_to_db} records to DB")
 	
 	html_content = None
 	text_content = None
@@ -1815,7 +1798,7 @@ if __name__ == "__main__":
 				text_content = "No text avaiable as html2text (was not "
 		if EMailSMTPUser:
 			# Send authenticated
-			print("Sending authenticated")
+			logging.info("Sending authenticated")
 			send_email(
 				html_content=email_content, 
 				subject="Mailstats for "+analysis_date,
@@ -1830,7 +1813,7 @@ if __name__ == "__main__":
 			)
 		else:
 			# No authentication
-			print(f"Sending non authenticated {EmailAddress} {EmailHost}")
+			logging.info(f"Sending non authenticated {EmailAddress} {EmailHost}")
 			try:
 				send_email(
 					subject="Mailstats for "+analysis_date,
@@ -1842,4 +1825,4 @@ if __name__ == "__main__":
 					Text_content=text_content 
 				)
 			except Exception as e:
-				print(f"Email Exception {e}")
+				logging.error(f"Email Exception {e}")
