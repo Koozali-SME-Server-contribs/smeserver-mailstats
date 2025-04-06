@@ -39,12 +39,12 @@
 		<p><span class=label>
 			%=l('mst_Date_for_Stats_display')
 		</span><span class=data>
-			% my @StatsDate_options = [['$c->get_StatsDate()' => '$c->get_StatsDate()']];
+			% my @StatsDate_options = $c->get_mailstat_dates();
 			% param 'StatsDate' => $mst_data->{StatsDate} unless param 'StatsDate';
 			%= select_field 'StatsDate' => @StatsDate_options, class => 'input', id => 'StatsDate_select'
 		<br></span>	</p>
 	
-		<object data="<%='mailstats/$c-&gt;stash(&quot;url&quot;)' %>" title="<%= $c->stash('title') %>"  type="text/html" ><%= $c->stash('title') %> not found</object>
+		<object id = 'mailstats_object' data="<%='mailstats/$c-&gt;stash(&quot;url&quot;)' %>" title="<%= $c->stash('title') %>"  type="text/html" ><%= $c->stash('title') %> not found</object>
 	
 	
 		%# Probably finally by a submit.

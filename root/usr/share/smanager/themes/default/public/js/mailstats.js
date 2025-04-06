@@ -38,3 +38,29 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('CountrySelect_select')
         .addEventListener('click', updateTextInput);
 });
+
+// Initialize select with current object content
+document.addEventListener('DOMContentLoaded', () => {
+    const objectElement = document.getElementById('mailstats_object');
+    const selectElement = document.getElementById('StatsDate_select');
+    
+    // Extract current date from object's data URL
+    const currentDate = objectElement.data.match(/mailstats_for_(\d{4}-\d{2}-\d{2})\.html/)?.[1];
+    
+    if (currentDate) {
+        selectElement.value = currentDate;
+    }
+});
+
+// Update object content when selection changes
+document.getElementById('StatsDate_select').addEventListener('change', function() {
+    const selectedDate = this.value;
+    const objectElement = document.getElementById('mailstats_object');
+    
+    // Update object's data source
+    objectElement.data = `mailstats_for_${selectedDate}.html`;
+    
+    // Force refresh using clone method (cross-browser workaround)
+    const clone = objectElement.cloneNode(true);
+    objectElement.replaceWith(clone);
+});

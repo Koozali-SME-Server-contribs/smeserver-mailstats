@@ -13,6 +13,8 @@ use esmith::AccountsDB;
 use esmith::NetworksDB;
 use esmith::DomainsDB;
 
+use POSIX 'strftime';
+
 use constant FALSE => 0;
 use constant TRUE  => 1;
 
@@ -290,5 +292,30 @@ sub get_URIBL_list{
     "grey.uribl.com",     # Suspicious URI list
     "white.uribl.com"    # Verified safe URI list
 );}
+
+sub get_mailstat_dates {
+    my ($directory) = '/opt/mailstats/html';
+    my @date_pairs;
+    
+    # Find all matching files in directory
+    opendir(my $dh, $directory) or die "Can't open directory: $!";
+    
+    while (my $file = readdir($dh)) {
+        next unless $file =~ /mailstats_for_(\d{4}-\d{2}-\d{2})\.html$/;
+        my $date = $1;
+        
+        if ($date =~ /^(\d{4})-(\d{2})-(\d{2})$/) {
+            my $formatted_date = strftime("%B %-d %Y", 0, 0, 0, $3, $2-1, $1-1900);
+            push @date_pairs, [$formatted_date, $date];
+        }
+    }
+    
+    closedir($dh);
+    
+    # Sort dates chronologically
+    @date_pairs = sort { $a->[1] cmp $b->[1] } @date_pairs;
+    
+    return \@date_pairs;
+}
 
 1;
