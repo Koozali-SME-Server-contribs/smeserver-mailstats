@@ -44,7 +44,7 @@
 			%= select_field 'StatsDate' => @StatsDate_options, class => 'input', id => 'StatsDate_select'
 		<br></span>	</p>
 	
-		<object id = 'mailstats_object' data="<%='mailstats/$c-&gt;stash(&quot;url&quot;)' %>" title="<%= $c->stash('title') %>"  type="text/html" ><%= $c->stash('title') %> not found</object>
+		<object id = 'mailstats_object' data="<%='' %>" title="<%= $c->stash('title') %>"  type="text/html" height='600px' width='100%' ><%= $c->stash('title') %> not found</object>
 	
 	
 		%# Probably finally by a submit.

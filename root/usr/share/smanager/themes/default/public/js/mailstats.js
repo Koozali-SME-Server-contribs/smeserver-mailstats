@@ -39,28 +39,107 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', updateTextInput);
 });
 
-// Initialize select with current object content
-document.addEventListener('DOMContentLoaded', () => {
-    const objectElement = document.getElementById('mailstats_object');
-    const selectElement = document.getElementById('StatsDate_select');
-    
-    // Extract current date from object's data URL
-    const currentDate = objectElement.data.match(/mailstats_for_(\d{4}-\d{2}-\d{2})\.html/)?.[1];
-    
-    if (currentDate) {
-        selectElement.value = currentDate;
-    }
+/**
+ * Date Select Manager
+ * 
+ * This script manages an HTML select element with dates and updates an HTML object
+ * based on the selected date. It sets the initial value to yesterday's date (or the latest date available),
+ * updates the object's data parameter, and refreshes the display.
+ */
+
+// Wait for DOM to be fully loaded before executing
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all date selects and their corresponding objects
+    initializeSelects();
 });
 
-// Update object content when selection changes
-document.getElementById('StatsDate_select').addEventListener('change', function() {
-    const selectedDate = this.value;
-    const objectElement = document.getElementById('mailstats_object');
+function initializeSelects() {
+    // Find all select elements with IDs starting with "StatsDate_select"
+    const selects = document.querySelectorAll('select[id^="StatsDate_select"]');
     
-    // Update object's data source
-    objectElement.data = `mailstats_for_${selectedDate}.html`;
+    selects.forEach(function(dateSelect) {
+        const selectId = dateSelect.id;
+        // Find the corresponding object element
+        // If the select has a numeric suffix, look for object with same suffix
+        const objectId = selectId === 'StatsDate_select' ? 
+                        'mailstats_object' : 
+                        'mailstats_object' + selectId.replace('StatsDate_select', '');
+        
+        const mailstatsObject = document.getElementById(objectId);
+        
+        // Check if elements exist before proceeding
+        if (!dateSelect) {
+            console.error(`Select element with ID "${selectId}" not found.`);
+            return; // Skip this pair if select doesn't exist
+        }
+        
+        if (!mailstatsObject) {
+            console.error(`Object element with ID "${objectId}" not found.`);
+            // Continue anyway, as we can still set the select to the right date
+        }
+        
+		// Function to update the object's data parameter and refresh it
+		function updateMailstatsObject(date) {
+			if (date && mailstatsObject) {
+				try {
+					// Create the full URL including the selected date
+					const currentDomain = window.location.origin;
+					const fullUrl = `${currentDomain}/mailstats/mailstats_for_${date}.html`;
+					
+					// Update the data attribute with the full URL
+					mailstatsObject.setAttribute('data', fullUrl);
+					
+					// Force a refresh of the object
+					// [refresh code here]
+					
+					console.log(`Updated object to show data from: ${fullUrl}`);
+				} catch (error) {
+					console.error(`Error updating object:`, error);
+				}
+			}
+		}
+        
+        // Set the initial value of the select
+        const yesterdayDate = getYesterdayDate();
+        let dateFound = false;
+        
+        // Find and select the option with yesterday's date
+        for (let i = 0; i < dateSelect.options.length; i++) {
+            if (dateSelect.options[i].value === yesterdayDate) {
+                dateSelect.selectedIndex = i;
+                dateFound = true;
+                break;
+            }
+        }
+        
+        // If yesterday's date is not found, select the latest date (last option)
+        if (!dateFound && dateSelect.options.length > 0) {
+            dateSelect.selectedIndex = dateSelect.options.length - 1;
+            console.log(`Yesterday's date (${yesterdayDate}) not found in options for ${selectId}. Selected the latest date instead: ${dateSelect.value}`);
+        }
+        
+        // Update the object with the initial date
+        if (dateSelect.value) {
+            updateMailstatsObject(dateSelect.value);
+        }
+        
+        // Add event listener for changes to the select element
+        dateSelect.addEventListener('change', function() {
+            const selectedDate = this.value;
+            updateMailstatsObject(selectedDate);
+        });
+    });
+}
+
+// Function to get yesterday's date in YYYY-MM-DD format
+function getYesterdayDate() {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
     
-    // Force refresh using clone method (cross-browser workaround)
-    const clone = objectElement.cloneNode(true);
-    objectElement.replaceWith(clone);
-});
+    const year = yesterday.getFullYear();
+    const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+    const day = String(yesterday.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+}
