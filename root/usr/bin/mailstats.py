@@ -1800,7 +1800,6 @@ if __name__ == "__main__":
 			# Send authenticated
 			logging.info("Sending authenticated")
 			send_email(
-				html_content=email_content, 
 				subject="Mailstats for "+analysis_date,
 				from_email="mailstats@"+DomainName, 
 				to_email=EmailAddress, 
