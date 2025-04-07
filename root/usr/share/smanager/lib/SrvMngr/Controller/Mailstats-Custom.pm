@@ -118,7 +118,7 @@ use constant TRUE  => 1;
 			'RBLList'=>$cdb->get_prop('qpsmtpd','RBLList'),
 			'SBLList'=>$cdb->get_prop('qpsmtpd','SBLList'),
 			'UBLList'=>$cdb->get_prop('qpsmtpd','UBLList'),
-			'LevelPort'=>$cdb->get_prop('spamassassin','TagLevel') || '5',
+			'TagLevel'=>$cdb->get_prop('spamassassin','TagLevel') || '5',
 			'RejectLevel'=>$cdb->get_prop('spamassassin','RejectLevel') || '12'
 			
 			
