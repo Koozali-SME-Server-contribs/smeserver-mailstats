@@ -66,6 +66,7 @@ function initializeSelects() {
                         'mailstats_object' + selectId.replace('StatsDate_select', '');
         
         const mailstatsObject = document.getElementById(objectId);
+        const mailstatsfull = document.getElementById('mailstats-full-window');
         
         // Check if elements exist before proceeding
         if (!dateSelect) {
@@ -88,6 +89,7 @@ function initializeSelects() {
 					
 					// Update the data attribute with the full URL
 					mailstatsObject.setAttribute('data', fullUrl);
+					mailstatsfull.setAttribute('href', fullUrl);
 					
 					// Force a refresh of the object
 					// [refresh code here]

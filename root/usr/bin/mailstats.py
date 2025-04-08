@@ -148,6 +148,24 @@ PERCENT = TOTALS + 1
 ColTotals = 24
 ColPercent = 25
 
+def replace_bracket_content(input_filename, output_filename):
+    import re
+
+    with open(input_filename, 'r', encoding='utf-8') as infile:
+        content = infile.read()
+
+    # Pattern to capture digits/spaces inside brackets
+    pattern = r'\[([\d\s]*)\]\(\./showSummaryLogs\.php\?date=\d{4}-\d{2}-\d{2}&hour=\d{1,2}\)'
+    
+    # Pad captured group to 10 characters
+    replaced_content = re.sub(pattern, lambda m: f"{m.group(1):8}", content)
+
+    with open(output_filename, 'w', encoding='utf-8') as outfile:
+        outfile.write(replaced_content)
+
+    return f"Replacements completed. Output written to {output_filename}"
+
+
 def get_logs_from_Journalctl(date='yesterday'):
 	# JSON-pretty output example from journalctl
 	# {
@@ -1129,7 +1147,7 @@ if __name__ == "__main__":
 	DomainName = get_value(ConfigDB, "DomainName", "type") 							#'bjsystems.co.uk' #  $cdb->get('DomainName')->value;
 	SystemName = get_value(ConfigDB, "SystemName", "type")
 	
-	hello_string = "Mailstats:"+Mailstats_version+' for '+SystemName+"."+DomainName+" for "+analysis_date+" logging.error(ed at:"+formatted_datetime
+	hello_string = "Mailstats:"+Mailstats_version+' for '+SystemName+"."+DomainName+" for "+analysis_date+" printed at:"+formatted_datetime
 	logging.info(hello_string)
 	version_string = "Chameleon:"+chameleon_version+" Python:"+python_version
 	if isThonny:
@@ -1150,13 +1168,15 @@ if __name__ == "__main__":
 	EmailAddress = get_value(ConfigDB,"mailstats","Email","admin@"+DomainName)
 	if '@' not in EmailAddress:
 		EmailAddress = EmailAddress+"@"+DomainName
-	EmailTextOrHTML = get_value(ConfigDB,"mailstats","EmailTextOrHTML","Both") 		#Text or Both or None
+	EmailTextorHTML = get_value(ConfigDB,"mailstats","TextorHTML","Both") 		#Text or Both or None
 	EmailHost = get_value(ConfigDB,"mailstats","EmailHost","localhost") 			#Default will be localhost
 	EmailPort = int(get_value(ConfigDB,"mailstats","EmailPort","25"))
 	EMailSMTPUser = get_value(ConfigDB,"mailstats","EmailUser")   					#None = default => no authenticatioon needed
 	EMailSMTPPassword = get_value(ConfigDB,"mailstats","EmailPassword")
 	
 	BadCountries = get_value(ConfigDB,"qpsmtpd","BadCountries")
+	
+	wanted_mailstats_email = get_value(ConfigDB,"mailstats","CountMailstatsEmail", "no")
 	
 	count_records_to_db = 0;
 	
@@ -1250,6 +1270,7 @@ if __name__ == "__main__":
 	logging.info(f"Found {len(summary_log_entries)} summary entries and skipped {skip_count} entries")
 	sorted_log_dict = sort_log_entries(summary_log_entries)
 	logging.info(f"Sorted {len(sorted_log_dict)} entries")
+	#print(f"{sorted_log_dict}")
 	#quit(1)
 
 	columnHeaders = ['Count','WebMail','Local','MailMan','Relay','DMARC','Virus','RBL/DNS','Geoip.','Non.Conf.','Karma','Rej.Load','Del.Spam','Qued.Spam?','  Ham','TOTALS','PERCENT']
@@ -1310,6 +1331,7 @@ if __name__ == "__main__":
 		if isThonny:
 			# Initial call to logging.error( the progress bar
 			print_progress_bar(0, sorted_len, prefix='Progress:', suffix='Complete', length=50)
+		count_ignored_mailstats = 0;
 		for timestamp, data in sorted_log_dict.items():
 			i += 1
 			totalexamined += 1
@@ -1321,9 +1343,11 @@ if __name__ == "__main__":
 			hour = dt.hour
 			# parse the data
 			parsed_data = parse_data(data)
-			#Take out the mailstats email
-			if 'mailstats' in parsed_data['from-email'] and DomainName in parsed_data['from-email']:
-				continue
+			#Take out the mailstats email if necessay
+			if wanted_mailstats_email == 'no':
+				if 'mailstats' in parsed_data['from-email'] and DomainName in parsed_data['from-email']:
+					count_ignored_mailstats +=1
+					continue
 			# Save the data here if necessary
 			if saveData:
 				save_summaries_to_db(cursor,conn,anaysis_date_obj.strftime('%Y-%m-%d'),hour,parsed_data)
@@ -1525,6 +1549,8 @@ if __name__ == "__main__":
 			if isThonny:
 				logging.error() #seperate the [progress bar]
 				
+	if count_ignored_mailstats > 0:
+		logging.info(f"Ignored {count_ignored_mailstats} mailstats emails")
 	# Compute percentages
 	total_Count  = columnCounts_2d[ColTotals][TOTALS]
 	#Column of percentages
@@ -1671,7 +1697,7 @@ if __name__ == "__main__":
 	with open(template_path, 'r') as template_file:
 		template_content = template_file.read()
 	#Use the hello string to create a suitable heading for the web page
-	html_title = hello_string.replace("logging.error(ed at"," <span class='greyed-out'>logging.error(ed at")
+	html_title = hello_string.replace("Printed at"," <span class='greyed-out'>Printeded at")
 	html_title += "</span>"
 	
 	# Create a Chameleon template instance
@@ -1696,55 +1722,55 @@ if __name__ == "__main__":
 		
 	total_html = rendered_html
 	# Add in the header information
-	rendered_html = get_heading()
-	total_html =  insert_string_after(total_html,rendered_html, "<!---Add in header information here -->")
+	header_rendered_html = get_heading()
+	total_html =  insert_string_after(total_html,header_rendered_html, "<!---Add in header information here -->")
 
 	#add in the subservient tables..(remeber they appear in the reverse order of below!)
 
 	#virus codes
 	virus_headers = ["Virus",'Count','Percent']
 	virus_title = 'Viruses found'
-	rendered_html = render_sub_table(virus_title,virus_headers,found_viruses,suppress_threshold=True)
+	virus_rendered_html = render_sub_table(virus_title,virus_headers,found_viruses,suppress_threshold=True)
 	# Add it to the total 
-	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
+	total_html = insert_string_after(total_html,virus_rendered_html, "<!---Add in sub tables here -->")
 
 	#qpsmtd codes
 	qpsmtpd_headers = ["Reason",'Count','Percent']
 	qpsmtpd_title = 'Qpsmtpd codes league table'
-	rendered_html = render_sub_table(qpsmtpd_title,qpsmtpd_headers,found_qpcodes)
+	qpsmtpd_rendered_html = render_sub_table(qpsmtpd_title,qpsmtpd_headers,found_qpcodes)
 	# Add it to the total 
-	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
+	total_html = insert_string_after(total_html,qpsmtpd_rendered_html, "<!---Add in sub tables here -->")
 	
 	
 	#Junk mails
 	junk_mail_count_headers = ['Username','Count', 'Percent']
 	junk_mail_counts = scan_mail_users()
 	junk_mail_count_title = 'Junk mail counts'
-	rendered_html = render_sub_table(junk_mail_count_title,junk_mail_count_headers,junk_mail_counts,suppress_threshold=True)
+	junk_rendered_html = render_sub_table(junk_mail_count_title,junk_mail_count_headers,junk_mail_counts,suppress_threshold=True)
 	# Add it to the total 
-	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
+	total_html = insert_string_after(total_html,junk_rendered_html, "<!---Add in sub tables here -->")
 
 	
 	#Recipient counts
 	recipient_count_headers = ["Email",'Queued','Rejected','Spam tagged','Accepted Percent']
 	recipient_count_title = 'Incoming email recipients'
-	rendered_html = render_sub_table(recipient_count_title,recipient_count_headers,recipients_found,suppress_threshold=True)
+	recipient_rendered_html = render_sub_table(recipient_count_title,recipient_count_headers,recipients_found,suppress_threshold=True)
 	# Add it to the total 
-	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
+	total_html = insert_string_after(total_html,recipient_rendered_html, "<!---Add in sub tables here -->")
 
 	#Geoip Country codes
 	geoip_headers  = ['Country','Count','Percent','Rejected?']
 	geoip_title = 'Geoip results'
-	rendered_html = render_sub_table(geoip_title,geoip_headers,found_countries,get_character_in_reject_list)
+	geoip_rendered_html = render_sub_table(geoip_title,geoip_headers,found_countries,get_character_in_reject_list)
 	# Add it to the total 
-	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
+	total_html = insert_string_after(total_html,geoip_rendered_html, "<!---Add in sub tables here -->")
 	
 	#Blacklist counts
 	blacklist_headers = ['URL','Count','Percent']
 	blacklist_title = 'Blacklist used'
-	rendered_html = render_sub_table(blacklist_title,blacklist_headers,blacklist_found,suppress_threshold=True)
+	blacklist_rendered_html = render_sub_table(blacklist_title,blacklist_headers,blacklist_found,suppress_threshold=True)
 	# Add it to the total 
-	total_html = insert_string_after(total_html,rendered_html, "<!---Add in sub tables here -->")
+	total_html = insert_string_after(total_html,blacklist_rendered_html, "<!---Add in sub tables here -->")
 	
 	if saveData:
 		# Close the connection
@@ -1758,17 +1784,50 @@ if __name__ == "__main__":
 		output_file.write(total_html)
 	#and create a text version if the local version of html2text is suffiicent
 	if get_html2text_version() == '2019.9.26':
-		# Get a temporary file name
+		# Get temporary file
 		temp_file_name = tempfile.mktemp()
-		html_to_text(output_path+'.html',temp_file_name)
-		logging.info(f"Rendered HTML saved to {temp_file_name}")
+		temp_file_name1 = tempfile.mktemp()
+		# see if html has links in the table entries, if not then use the current html file, else generate one
+		if not nolinks:
+			# i.e. links in html
+			# Render the template with the 2D array data and column headers
+			try:
+				rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, 
+											reporting_date=analysis_date, title=html_title, 
+											version=version_string,
+											nolinks=True,
+											PreviousDate=previous_date_str,
+											NextDate=next_date_str,
+											DomainName=DomainName,
+											SystemName=SystemName,
+											enable_graphs=enable_graphs
+											)
+			except Exception as e:
+				logging.error(f"Chameleon template Exception {e}")
+			# Need to add the sub tables
+			full_rendered_html = ''.join([
+				header_rendered_html,
+				rendered_html, 
+				blacklist_rendered_html,
+				geoip_rendered_html,
+				recipient_rendered_html,
+				junk_rendered_html,
+				qpsmtpd_rendered_html,
+				virus_rendered_html
+			])
+			with open(temp_file_name, 'w') as output_file:
+				output_file.write(full_rendered_html)
+		else:
+			temp_file_name = output_path+'.html'
+		html_to_text(temp_file_name,temp_file_name1)
+		logging.info(f"Rendered HTML saved to {temp_file_name1}")
 		# and save it if required
 		if not notextfile:
 			text_file_path = output_path+'.txt'
 			# and rename it
-			os.rename(temp_file_name, text_file_path)
+			os.rename(temp_file_name1, text_file_path)
 		else:
-			text_file_path = temp_file_name
+			text_file_path = temp_file_name1
 	else:
 		text_file_path = ""
 	
@@ -1777,8 +1836,8 @@ if __name__ == "__main__":
 	html_content = None
 	text_content = None
 	#Now see if Email required
-	if EmailTextOrHTML:
-		if EmailTextOrHTML == "HTML" or EmailTextOrHTML == "Both":
+	if EmailTextorHTML:
+		if EmailTextorHTML == "HTML" or EmailTextorHTML == "Both":
 			# Send html email (default))
 			filepath = html_page_dir+"mailstats_for_"+analysis_date+".html"
 			html_content = read_html_from_file(filepath)
@@ -1790,12 +1849,12 @@ if __name__ == "__main__":
 				email_file = html_page_dir + "Email_mailstats_for_"+analysis_date
 				with open(email_file+'.html', 'w') as output_file:
 					output_file.write(html_content)
-		if EmailTextOrHTML == "Text" or EmailTextOrHTML == "Both":
+		if EmailTextorHTML == "Text" or EmailTextorHTML == "Both":
 			#filepath = html_page_dir+"mailstats_for_"+analysis_date+".txt"
 			if not text_file_path == "":
 				text_content = read_text_from_file(text_file_path)
 			else:
-				text_content = "No text avaiable as html2text (was not "
+				text_content = "No text avaiable (as html2text was not installed) "
 		if EMailSMTPUser:
 			# Send authenticated
 			logging.info("Sending authenticated")
