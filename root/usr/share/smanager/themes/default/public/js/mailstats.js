@@ -22,12 +22,27 @@ function updateTextInput() {
     const multiselect = document.getElementById('CountrySelect_select');
     const textInput = document.getElementById('AccumCountryCodes_text');
     
-    // Get selected values as comma-separated string
-    const selectedValues = Array.from(multiselect.selectedOptions)
-        .map(option => option.value)
-        .join(',');
+    // Get selected values from the multiselect as an array
+    const selectedValues = Array.from(multiselect.selectedOptions).map(option => option.value);
     
-    textInput.value = selectedValues;
+    // Split the current value of the text input into an array of codes
+    const currentValues = textInput.value.split(',').map(code => code.trim()).filter(code => code !== '');
+    
+    // Create a new set to manage the codes
+    const updatedValuesSet = new Set(currentValues);
+    
+    // Add selected values to the set
+    selectedValues.forEach(value => updatedValuesSet.add(value));
+    
+    // Remove values from the set that are no longer selected but were added via the multiselect
+    currentValues.forEach(code => {
+        if (!selectedValues.includes(code) && multiselect.querySelector(`option[value="${code}"]`)) {
+            updatedValuesSet.delete(code);
+        }
+    });
+    
+    // Update the text input with the updated values, preserving manually added codes
+    textInput.value = Array.from(updatedValuesSet).join(',');
 }
 
 // Initialize on page load
