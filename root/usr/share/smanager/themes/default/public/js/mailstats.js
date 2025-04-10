@@ -5,53 +5,71 @@ $(document).ready(function() {
 });
 
 // Initialize multiselect with existing text values
-function initMultiselect() {
-    const multiselect = document.getElementById('CountrySelect_select');
-    const textInput = document.getElementById('AccumCountryCodes_text');
+// Initialize multiselect based on text input values
+function initMultiselect(multiselectId, textInputId) {
+    const multiselect = document.getElementById(multiselectId);
+    const textInput = document.getElementById(textInputId);
     
-    // Split text input values and select corresponding options
+    if (!multiselect || !textInput) {
+        console.error('Could not find elements with provided IDs');
+        return;
+    }
+
     textInput.value.split(',').forEach(value => {
-        const option = Array.from(multiselect.options).find(opt => opt.value === value.trim());
+        const option = Array.from(multiselect.options)
+                          .find(opt => opt.value === value.trim());
         if (option) option.selected = true;
     });
 }
 
-
 // Update text input when multiselect changes
-function updateTextInput() {
-    const multiselect = document.getElementById('CountrySelect_select');
-    const textInput = document.getElementById('AccumCountryCodes_text');
+function updateTextInput(multiselectId, textInputId) {
+    const multiselect = document.getElementById(multiselectId);
+    const textInput = document.getElementById(textInputId);
     
-    // Get selected values from the multiselect as an array
-    const selectedValues = Array.from(multiselect.selectedOptions).map(option => option.value);
+    if (!multiselect || !textInput) {
+        console.error('Could not find elements with provided IDs');
+        return;
+    }
+
+    const selectedValues = Array.from(multiselect.selectedOptions)
+                               .map(option => option.value);
     
-    // Split the current value of the text input into an array of codes
-    const currentValues = textInput.value.split(',').map(code => code.trim()).filter(code => code !== '');
+    const currentValues = textInput.value.split(',')
+                               .map(code => code.trim())
+                               .filter(code => code !== '');
     
-    // Create a new set to manage the codes
     const updatedValuesSet = new Set(currentValues);
     
-    // Add selected values to the set
     selectedValues.forEach(value => updatedValuesSet.add(value));
     
-    // Remove values from the set that are no longer selected but were added via the multiselect
     currentValues.forEach(code => {
-        if (!selectedValues.includes(code) && multiselect.querySelector(`option[value="${code}"]`)) {
+        if (!selectedValues.includes(code) && 
+            multiselect.querySelector(`option[value="${code}"]`)) {
             updatedValuesSet.delete(code);
         }
     });
     
-    // Update the text input with the updated values, preserving manually added codes
     textInput.value = Array.from(updatedValuesSet).join(',');
 }
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
-    initMultiselect();
+    initMultiselect('CountrySelect_select','AccumCountryCodes_text');
+    initMultiselect('RBLList_select','RBLList_text');
+    initMultiselect('SBLList_select','SBLList_text');
+    initMultiselect('URIBLList_select','URIBLList_text');
+    
     
     // Add change listener to multiselect
     document.getElementById('CountrySelect_select')
-        .addEventListener('click', updateTextInput);
+        .addEventListener('click', () => updateTextInput('CountrySelect_select','AccumCountryCodes_text'));
+    document.getElementById('RBLList_select')
+        .addEventListener('click', () => updateTextInput('RBLList_select','RBLList_text'));
+    document.getElementById('SBLList_select')
+        .addEventListener('click', () => updateTextInput('SBLList_select','SBLList_text'));
+    document.getElementById('URIBLList_select')
+        .addEventListener('click', () => updateTextInput('URIBLList_select','URIBLList_text'));
 });
 
 /**
@@ -159,4 +177,48 @@ function getYesterdayDate() {
     const day = String(yesterday.getDate()).padStart(2, '0');
     
     return `${year}-${month}-${day}`;
+}
+
+//
+// disable enable RBL/SBL/URIBL list selection
+//
+// Example html formatting to use it.
+//<div data-mailstats-group>
+    //<select id="EnableRHSBL_select" data-mailstats-control data-mailstats-target="RBL_group">
+        //<option value="disabled">Disabled</option>
+        //<option value="enabled">Enabled</option>
+    //</select>
+    
+    //<div id="RBL_group">
+        //<!-- Content -->
+    //</div>
+//</div>
+// or , 'data-mailstats-control' => undef,  'data-mailstats-target' => "RBL_group" for mojo html helper 
+//
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize all control pairs
+    document.querySelectorAll('[data-mailstats-group]').forEach(group => {
+        const select = group.querySelector('select[data-mailstats-control]');
+        const target = document.getElementById(select.dataset.mailstatsTarget);
+        
+        if (!select || !target) {
+            console.error('Control group misconfigured', group);
+            return;
+        }
+
+        // Initial state
+        updateState(target, select.value === 'enabled');
+        
+        // Change listener
+        select.addEventListener('change', () => 
+            updateState(target, select.value === 'enabled')
+        );
+    });
+});
+
+function updateState(target, enabled) {
+    target.style.opacity = enabled ? '1' : '0.5';
+    target.style.pointerEvents = enabled ? 'auto' : 'none';
+    target.style.filter = enabled ? 'none' : 'grayscale(50%)';
+    target.setAttribute('aria-disabled', !enabled);
 }
