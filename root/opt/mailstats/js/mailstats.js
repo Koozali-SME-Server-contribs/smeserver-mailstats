@@ -1,4 +1,6 @@
-window.onload = function(){doNavs();} 
+document.addEventListener("DOMContentLoaded", () => {
+  doNavs(); // Your initialization code
+});
 //function openTab(event, tabId){
 //// Get all elements with class="tab-content" and hide them
 //const tabContents = document.querySelectorAll('.tab-content');
@@ -12,24 +14,44 @@ window.onload = function(){doNavs();}
 //document.getElementById(tabId).classList.add('tab-content-active');
 //event.target.classList.add('tab-active');}
 
-function LinkCheck(url){
-	var http = new XMLHttpRequest();
-	http.open('HEAD', url, false);
-	http.send();
-	return http.status!=404;
+//function LinkCheck(url){
+	//var http = new XMLHttpRequest();
+	//http.open('HEAD', url, false);
+	//http.send();
+	//return http.status!=404;
+//}
+
+async function LinkCheck(url) {
+	//Not allowed by CSP rules.
+  //try {
+    //const response = await fetch(url, { mode: "no-cors" });
+    //return response.ok; // Returns true if the resource exists
+  //} catch (error) {
+    //console.error("Error checking link:", error);
+    //return false;
+  //}
+  return true;
 }
+
 function doNavs() {
+	const isInIframe = window.self !== window.top;
 	var aTags = document.getElementsByTagName('a'),
 		atl = aTags.length,i;
 	for (i = 0; i < atl; i++) {
 		if (aTags[i].innerText == "Previous") {
-			if (!LinkCheck(aTags[i].href)) { 
+			if (isInIframe){  //!LinkCheck(aTags[i].href)) { 
 				aTags[i].style.visibility = "hidden";
 			} else {
 				aTags[i].style.visibility = "visible";
 			}
 		} else if (aTags[i].innerText == "Next") {
-			if (!LinkCheck(aTags[i].href)) { 
+			if (isInIframe){  //!LinkCheck(aTags[i].href)) { 
+				aTags[i].style.visibility = "hidden";
+			} else {
+				aTags[i].style.visibility = "visible";
+			}
+		} else if (aTags[i].innerText == "Index of files") {
+			if (isInIframe){  //!LinkCheck(aTags[i].href)) { 
 				aTags[i].style.visibility = "hidden";
 			} else {
 				aTags[i].style.visibility = "visible";
