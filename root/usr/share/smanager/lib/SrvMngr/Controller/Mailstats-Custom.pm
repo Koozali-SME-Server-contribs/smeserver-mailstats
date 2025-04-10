@@ -257,41 +257,41 @@ sub get_CountryCodes {
 }
 
 
-sub get_RBL_lists{
-	return (  
-    # Other Major Providers
-    "zen.spamhaus.org",    # Combines SBL, XBL, and PBL
-    'bl.spamcop.net',      # SpamCop Blocklist (user-reported spam)
-    'cbl.abuseat.org',     # Composite Blocking List (bot-infected hosts)
-    'b.barracudacentral.org', # Barracuda Reputation Blocklist
-    
-    # Specialized Lists
-    'dun.dnsrbl.net',      # DNSRBL (DNS-based blacklist)
-    'psbl.surriel.com',    # Passive Spam Block List (passive spam traps)
-    'backscatterer.org',   # Backscatter/Out-of-Bounce spam sources
-    'dronebl.org',         # Drones/Proxy/DDoS sources
-    'dnsbl-1.uceprotect.net',# UCEPROTECT Level 1 (entry-level blocking)[User Query]
-    'dnsbl-2.uceprotect.net' # UCEPROTECT Level 2 (more aggressive)[User Query]  
-);}
+sub get_RBL_lists {
+    return [
+        ['zen.spamhaus.org' => 'zen.spamhaus.org'],    # Combines SBL, XBL, and PBL
+        ['bl.spamcop.net' => 'bl.spamcop.net'],        # SpamCop Blocklist (user-reported spam)
+        ['cbl.abuseat.org' => 'cbl.abuseat.org'],      # Composite Blocking List (bot-infected hosts)
+        ['b.barracudacentral.org' => 'b.barracudacentral.org'], # Barracuda Reputation Blocklist
+        ['dun.dnsrbl.net' => 'dun.dnsrbl.net'],        # DNSRBL (DNS-based blacklist)
+        ['psbl.surriel.com' => 'psbl.surriel.com'],    # Passive Spam Block List (passive spam traps)
+        ['backscatterer.org' => 'backscatterer.org'],  # Backscatter/Out-of-Bounce spam sources
+        ['dronebl.org' => 'dronebl.org'],              # Drones/Proxy/DDoS sources
+        ['dnsbl-1.uceprotect.net' => 'dnsbl-1.uceprotect.net'], # UCEPROTECT Level 1 (entry-level blocking)
+        ['dnsbl-2.uceprotect.net' => 'dnsbl-2.uceprotect.net']  # UCEPROTECT Level 2 (more aggressive)
+    ];
+}
 
-sub get_SBL_list{
-	return (
-    "sbl.spamhaus.org",  # Spamhaus Blocklist
-    "xbl.spamhaus.org",  # eXploits Blocklist
-    "pbl.spamhaus.org",  # Policy Blocklist
-    "auth.spamhaus.org", # Auth Blocklist
-    "multi.surbl.org",    # SURBL's multi-level URI checker (domains in email content)
-    "rhsbl.sorbs.net"    # Right-Hand Side Blocklist (domain-based, not IP-based)
-);}
+sub get_SBL_lists {
+    return [
+        ['sbl.spamhaus.org' => 'sbl.spamhaus.org'],    # Spamhaus Blocklist
+        ['xbl.spamhaus.org' => 'xbl.spamhaus.org'],    # eXploits Blocklist
+        ['pbl.spamhaus.org' => 'pbl.spamhaus.org'],    # Policy Blocklist
+        ['auth.spamhaus.org' => 'auth.spamhaus.org'],  # Auth Blocklist
+        ['multi.surbl.org' => 'multi.surbl.org'],      # SURBL's multi-level URI checker (domains in email content)
+        ['rhsbl.sorbs.net' => 'rhsbl.sorbs.net']       # Right-Hand Side Blocklist (domain-based, not IP-based)
+    ];
+}
 
-sub get_URIBL_list{
-	return my @uribl_lists = (
-    "uribl.com",          # Primary URIBL service
-    "multi.uribl.com",    # Combined URIBL checks
-    "black.uribl.com",    # Aggressive blocking list
-    "grey.uribl.com",     # Suspicious URI list
-    "white.uribl.com"    # Verified safe URI list
-);}
+sub get_URIBL_lists {
+    return [
+        ['uribl.com' => 'uribl.com'],                  # Primary URIBL service
+        ['multi.uribl.com' => 'multi.uribl.com'],      # Combined URIBL checks
+        ['black.uribl.com' => 'black.uribl.com'],      # Aggressive blocking list
+        ['grey.uribl.com' => 'grey.uribl.com'],        # Suspicious URI list
+        ['white.uribl.com' => 'white.uribl.com']       # Verified safe URI list
+    ];
+}
 
 sub get_mailstat_dates {
     my ($directory) = '/opt/mailstats/html';
