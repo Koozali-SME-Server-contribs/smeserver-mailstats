@@ -94,19 +94,21 @@ from systemd import journal
 import logging
 
 # Configure logging
+log_dir_path = "/var/log/mailstats"
+# Check if the directory exists, and create it if it doesn't
+if not os.path.exists(log_dir_path):
+    os.makedirs(log_dir_path)
 logging.basicConfig(level=logging.INFO,  # Default level of messages to log
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     handlers=[
                         logging.StreamHandler(),  # Log to console
-                        logging.FileHandler("/opt/mailstats/logs/mailstats.log")  # Log to a file
+                        logging.FileHandler(log_dir_path+"/mailstats.log")  # Log to a file
                     ])
-
-
-enable_graphs = True;
+enable_graphs = True; #This could be a DB entry if required.
 try:
 	import matplotlib.pyplot as plt
 except ImportError:
-	logging.info("Matplotlib is not installed  - no graphs")
+	logging.debug("Matplotlib is not installed  - no graphs")
 	enable_graphs = False;
 
 Mailstats_version = '1.2'
@@ -655,7 +657,7 @@ def check_html2text_installed():
 		if not html2text_path:
 			raise FileNotFoundError
 		
-		logging.info(f"html2text is installed at: {html2text_path}")
+		logging.debug(f"html2text is installed at: {html2text_path}")
 		return True
 
 	except subprocess.CalledProcessError:
@@ -678,7 +680,7 @@ def html_to_text(input_file, output_file):
 		with open(output_file, 'w', encoding='utf-8') as outfile:
 			outfile.write(result.stdout.decode('utf-8'))
 
-		logging.info(f"Converted {input_file} to {output_file}")
+		logging.debug(f"Converted {input_file} to {output_file}")
 	except subprocess.CalledProcessError as e:
 		logging.error(f"Error occurred: {e.stderr.decode('utf-8')}", file=sys.stderr)
 		sys.exit(e.returncode)
@@ -802,7 +804,7 @@ def render_sub_table(table_title, table_headers, found_values, get_character=Non
 		if not suppress_threshold:
 			dynamic_threshold = max(1, 100 / (original_total**0.5)) if original_total > 0 else 0
 			dynamic_threshold = round(dynamic_threshold,1)
-			logging.info(f"Threshold for {table_title} set to {dynamic_threshold}% ")
+			logging.debug(f"Threshold for {table_title} set to {dynamic_threshold}% ")
 		else:
 			dynamic_threshold=0
 		absolute_floor = 50  # Minimum absolute value threshold
@@ -864,7 +866,7 @@ def read_html_from_file(filepath):
 	# Need to add in here the contents of the css file at the end of the head section.
 	with open(filepath, 'r', encoding='utf-8') as file:
 		html_contents = file.read()
-	logging.info("Reading from html file")
+	logging.debug("Reading from html file")
 	# Get Filepath
 	css_path = os.path.dirname(filepath)+"/../css/mailstats.css"
 	# Read in CSS 
@@ -1099,8 +1101,21 @@ def extract_blacklist_domain(text):
     if match:
         return "www.surbl.org"
     return None
+    
+def set_log_level(level):
+    """Dynamically adjust logging level (e.g., 'DEBUG', 'INFO', 'ERROR')."""
+    numeric_level = getattr(logging, level.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f"Invalid log level: {level}")
+    logging.setLevel(numeric_level)
+
+def format_duration(seconds: float) -> str:
+    """Convert seconds to human-readable HH:MM:SS format."""
+    return str(timedelta(seconds=seconds))
+
 
 if __name__ == "__main__":
+	start_time = datetime.now()
 	try:
 		chameleon_version = pkg_resources.get_distribution("Chameleon").version
 	except pkg_resources.DistributionNotFound:
@@ -1148,11 +1163,12 @@ if __name__ == "__main__":
 	SystemName = get_value(ConfigDB, "SystemName", "type")
 	
 	hello_string = "Mailstats:"+Mailstats_version+' for '+SystemName+"."+DomainName+" for "+analysis_date+" printed at:"+formatted_datetime
+	
 	logging.info(hello_string)
 	version_string = "Chameleon:"+chameleon_version+" Python:"+python_version
 	if isThonny:
 		version_string = version_string + "...under Thonny"
-	logging.info(f"{version_string} and built on {build_date_time}")
+	logging.debug(f"{version_string} and built on {build_date_time}")
 	
 
 	RHSenabled = get_value(ConfigDB, "qpsmtpd", "RHSBL","disabled") == "enabled"    #True  #( $cdb->get('qpsmtpd')->prop('RHSBL') eq 'enabled' );
@@ -1182,7 +1198,7 @@ if __name__ == "__main__":
 	
 	# Db save control
 	saveData = get_value(ConfigDB,"mailstats","SaveDataToMySQL","no") == 'yes' or forceDbSave
-	logging.info(f"Save Mailstats to DB set:{saveData} ")
+	logging.debug(f"Save Mailstats to DB set:{saveData} ")
 
 	if saveData:
 		# Connect to MySQL DB for saving
@@ -1229,7 +1245,7 @@ if __name__ == "__main__":
 				# Get the number of records deleted
 				rows_deleted = cursor.rowcount
 				if rows_deleted > 0:
-					logging.info(f"Deleted {rows_deleted} rows for {analysis_date} ")
+					logging.debug(f"Deleted {rows_deleted} rows for {analysis_date} ")
 			except pymysql.Error as e:
 				logging.error(f"SQL Delete failed ({delete_query}) ({e}) ")
 
@@ -1265,11 +1281,11 @@ if __name__ == "__main__":
 	#log_file = logs_dir+'current.log'
 	#log_entries,skip_count,ignored_count = read_in_relevant_log_file(log_file,anaysis_date_obj)
 	log_entries = get_logs_from_Journalctl(analysis_date)
-	logging.info(f"Found {len(log_entries)} entries in log for for {anaysis_date_obj.strftime('%Y-%m-%d')}")  #Ignored: {ignored_count} skipped: {skip_count}")
+	logging.debug(f"Found {len(log_entries)} entries in log for for {anaysis_date_obj.strftime('%Y-%m-%d')}")  #Ignored: {ignored_count} skipped: {skip_count}")
 	summary_log_entries,skip_count = filter_summary_records(log_entries)
-	logging.info(f"Found {len(summary_log_entries)} summary entries and skipped {skip_count} entries")
+	logging.debug(f"Found {len(summary_log_entries)} summary entries and skipped {skip_count} entries")
 	sorted_log_dict = sort_log_entries(summary_log_entries)
-	logging.info(f"Sorted {len(sorted_log_dict)} entries")
+	logging.debug(f"Sorted {len(sorted_log_dict)} entries")
 	#print(f"{sorted_log_dict}")
 	#quit(1)
 
@@ -1550,7 +1566,7 @@ if __name__ == "__main__":
 				logging.error() #seperate the [progress bar]
 				
 	if count_ignored_mailstats > 0:
-		logging.info(f"Ignored {count_ignored_mailstats} mailstats emails")
+		logging.debug(f"Ignored {count_ignored_mailstats} mailstats emails")
 	# Compute percentages
 	total_Count  = columnCounts_2d[ColTotals][TOTALS]
 	#Column of percentages
@@ -1827,7 +1843,7 @@ if __name__ == "__main__":
 		else:
 			temp_file_name = output_path+'.html'
 		html_to_text(temp_file_name,temp_file_name1)
-		logging.info(f"Rendered HTML saved to {temp_file_name1}")
+		logging.debug(f"Rendered HTML saved to {temp_file_name1}")
 		# and save it if required
 		if not notextfile:
 			text_file_path = output_path+'.txt'
@@ -1838,7 +1854,7 @@ if __name__ == "__main__":
 	else:
 		text_file_path = ""
 	
-	logging.info(f"Written {count_records_to_db} records to DB")
+	logging.debug(f"Written {count_records_to_db} records to DB")
 	
 	html_content = None
 	text_content = None
@@ -1864,7 +1880,7 @@ if __name__ == "__main__":
 				text_content = "No text avaiable (as html2text was not installed) "
 		if EMailSMTPUser:
 			# Send authenticated
-			logging.info("Sending authenticated")
+			logging.debug("Sending authenticated")
 			send_email(
 				subject="Mailstats for "+analysis_date,
 				from_email="mailstats@"+DomainName, 
@@ -1878,7 +1894,7 @@ if __name__ == "__main__":
 			)
 		else:
 			# No authentication
-			logging.info(f"Sending non authenticated {EmailAddress} {EmailHost}")
+			logging.debug(f"Sending non authenticated {EmailAddress} {EmailHost}")
 			try:
 				send_email(
 					subject="Mailstats for "+analysis_date,
@@ -1891,3 +1907,8 @@ if __name__ == "__main__":
 				)
 			except Exception as e:
 				logging.error(f"Email Exception {e}")
+	finish_time = datetime.now()
+	duration = (finish_time - start_time).total_seconds()
+	logging.info(
+		f"Mailstats finished at {finish_time.strftime('%Y-%m-%d %H:%M:%S')}"+f" Time taken: {duration:.2f} seconds"
+	)
