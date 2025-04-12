@@ -1697,7 +1697,7 @@ if __name__ == "__main__":
 	with open(template_path, 'r') as template_file:
 		template_content = template_file.read()
 	#Use the hello string to create a suitable heading for the web page
-	html_title = hello_string.replace("Printed at:"," <span class='greyed-out'>Printed at:")
+	html_title = hello_string.replace("printed at:"," <span class='greyed-out'>printed at:")
 	html_title += "</span>"
 	
 	# Create a Chameleon template instance
