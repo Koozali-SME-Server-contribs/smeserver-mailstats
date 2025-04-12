@@ -1697,7 +1697,7 @@ if __name__ == "__main__":
 	with open(template_path, 'r') as template_file:
 		template_content = template_file.read()
 	#Use the hello string to create a suitable heading for the web page
-	html_title = hello_string.replace("Printed at"," <span class='greyed-out'>Printeded at")
+	html_title = hello_string.replace("Printed at:"," <span class='greyed-out'>Printed at:")
 	html_title += "</span>"
 	
 	# Create a Chameleon template instance
@@ -1706,7 +1706,8 @@ if __name__ == "__main__":
 		# Render the template with the 2D array data and column headers
 		try:
 			rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, 
-										reporting_date=analysis_date, title=html_title, 
+										reporting_date=analysis_date, 
+										title=html_title, 
 										version=version_string,
 										nolinks=nolinks,
 										PreviousDate=previous_date_str,
@@ -1793,19 +1794,21 @@ if __name__ == "__main__":
 			# Render the template with the 2D array data and column headers
 			try:
 				rendered_html = template(array_2d=columnCounts_2d, column_headers=columnHeaders, 
-											reporting_date=analysis_date, title=html_title, 
+											reporting_date=analysis_date, 
+											title="",
 											version=version_string,
 											nolinks=True,
 											PreviousDate=previous_date_str,
 											NextDate=next_date_str,
 											DomainName=DomainName,
 											SystemName=SystemName,
-											enable_graphs=enable_graphs
+											enable_graphs=False
 											)
 			except Exception as e:
 				logging.error(f"Chameleon template Exception {e}")
 			# Need to add the sub tables
 			full_rendered_html = ''.join([
+				html_title+"<br />",
 				header_rendered_html,
 				rendered_html, 
 				blacklist_rendered_html,
@@ -1815,6 +1818,10 @@ if __name__ == "__main__":
 				qpsmtpd_rendered_html,
 				virus_rendered_html
 			])
+			# delete next and prev 
+			start = full_rendered_html.find("Previous")
+			end = full_rendered_html.find("Table")
+			full_rendered_html = full_rendered_html[:start] + full_rendered_html[end:]
 			with open(temp_file_name, 'w') as output_file:
 				output_file.write(full_rendered_html)
 		else:
