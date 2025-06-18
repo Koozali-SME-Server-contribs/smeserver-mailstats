@@ -1342,12 +1342,12 @@ if __name__ == "__main__":
 	total_qpsmtpd = 0
 	total_sqpsmtpd = 0
 	total_uqpsmtpd = 0
+	count_ignored_mailstats = 0;
 	
 	if sorted_len > 0:
 		if isThonny:
 			# Initial call to logging.error( the progress bar
 			print_progress_bar(0, sorted_len, prefix='Progress:', suffix='Complete', length=50)
-		count_ignored_mailstats = 0;
 		for timestamp, data in sorted_log_dict.items():
 			i += 1
 			totalexamined += 1
