@@ -21,10 +21,14 @@ BuildRequires: e-smith-devtools >= 1.13.1-03
 Requires: perl-Switch
 BuildRequires:  python36
 Requires:       python36
+# These need the EPEL repo enabled
+# So install as:  dnf install smeserver-mailstats --enablerepo=epel,smecontribs
 Requires:	html2text
 Requires:	python3-chameleon
-Requires:       python3-mysql
-Requires:       python3-matplotlib
+Requires:   python3-mysql
+Requires:   python3-matplotlib
+Requires:	plotly
+Requires:	pip3
 AutoReqProv: no
 
 %description
@@ -131,6 +135,7 @@ sed -i "s|__BUILD_DATE_TIME__|$now|" $RPM_BUILD_ROOT/usr/bin/mailstats.py
 /usr/bin/pip3 install -q pymysql
 /usr/bin/pip3 install -q numpy
 /usr/bin/pip3 install -q pandas
+/usr/bin/pip3 install -q plotly
 
 %clean
 /bin/rm -rf $RPM_BUILD_ROOT
