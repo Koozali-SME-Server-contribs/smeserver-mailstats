@@ -5,7 +5,7 @@ package SrvMngr::Controller::Mailstats;
 #----------------------------------------------------------------------
 # heading     : Investigation
 # description : Mailstats
-# navigation  : 4000 700
+# navigation  : 7000 150
 #
 # name : mailstats,    method : get,   url : /mailstats,   ctlact : Mailstats#main
 # name : mailstatsu,   method : post,  url : /mailstatsu,  ctlact : Mailstats#do_update

@@ -27,8 +27,7 @@ Requires:	html2text
 Requires:	python3-chameleon
 Requires:   python3-mysql
 Requires:   python3-matplotlib
-Requires:	plotly
-Requires:	pip3
+Requires:	python3-pip
 AutoReqProv: no
 
 %description
