@@ -35,11 +35,11 @@ A script that via cron.d e-mails mail statistics to admin on a daily basis.
 See http://www.contribs.org/bugzilla/show_bug.cgi?id=819
 
 %changelog
-* Sun Apr 06 2025 Brian Read <brianr@koozali.org> 11.2-2.sme
-- Add in SM2 panel [SME: ]
+* Sun Apr 06 2025 Brian Read <brianr@koozali.org> 11.1-2.sme
+- First build on Koji - and Add in SM2 panel [SME: 13116]
 
-* Mon Dec 30 2024 Brian Read <brianr@koozali.org> 11.2-1.sme
-- Update mailstats.pl to accomodate change in log format for SME11 [SME: 12841]
+* Mon Dec 30 2024 Brian Read <brianr@koozali.org> 11.1-1.sme
+- Update mailstats.py to accomodate change in log format for SME11 [SME: 12841]
 
 * Fri Jun 07 2024 Brian Read <brianr@koozali.org> 1.1-18.sme
 - Pull in python re-write from SME11 dev [SME: ]
