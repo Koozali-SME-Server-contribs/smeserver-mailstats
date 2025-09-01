@@ -1,6 +1,6 @@
 {
 # mailstats
-  my $status = $mailstats{'Status'} || 'disabled';
+  my $status = $mailstats{'status'} || 'disabled';
 
   if ($status eq 'enabled') 
   {

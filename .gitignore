@@ -2,14 +2,7 @@
 *.log
 *spec-20*
 *.tgz
-current.*
 *.xz
-current1
-current2
 *.html
 *.txt
-accounts
-configuration
-domains
-hosts
 *el8*

@@ -6,7 +6,7 @@ Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
 %define version 11.1
-%define release 2
+%define release 3
 Version: %{version}
 Release: %{release}%{?dist}
 License: GPL
@@ -35,6 +35,10 @@ A script that via cron.d e-mails mail statistics to admin on a daily basis.
 See http://www.contribs.org/bugzilla/show_bug.cgi?id=819
 
 %changelog
+* Mon Sep 01 2025 Brian Read <brianr@koozali.org> 11.1-3.sme
+- Sort out ASCII escape codes in return from journalctl API  [SME: 13117]
+- Add in Status enabled t default for mailstats DB [SME: 13118]
+
 * Sun Apr 06 2025 Brian Read <brianr@koozali.org> 11.1-2.sme
 - First build on Koji - and Add in SM2 panel [SME: 13116]
 
