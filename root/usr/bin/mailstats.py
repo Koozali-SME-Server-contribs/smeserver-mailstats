@@ -98,7 +98,7 @@ log_dir_path = "/var/log/mailstats"
 # Check if the directory exists, and create it if it doesn't
 if not os.path.exists(log_dir_path):
     os.makedirs(log_dir_path)
-logging.basicConfig(level=logging.DEBUG,  # Default level of messages to log
+logging.basicConfig(level=logging.INFO,  # Default level of messages to log
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     handlers=[
                         logging.StreamHandler(),  # Log to console
@@ -242,14 +242,22 @@ def get_logs_from_Journalctl(date='yesterday'):
 		
 		# Retrieve logs within the time range
 		logs = []
+		log_count = 0
+		error_count = 0
 		for entry in j:
-			entry_timestamp = entry.get('__REALTIME_TIMESTAMP', None)
-			entry_microseconds = int(entry_timestamp.timestamp() * 1_000_000)
-			if entry_timestamp and since_microseconds <= entry_microseconds <= until_microseconds:
-				# takeout ASCII Escape sequences from the message
-				entry['MESSAGE'] = strip_ansi_codes(entry['MESSAGE'])
-				logs.append(entry)
-		
+			try:
+				entry_timestamp = entry.get('__REALTIME_TIMESTAMP', None)
+				entry_microseconds = int(entry_timestamp.timestamp() * 1_000_000)
+				if entry_timestamp and since_microseconds <= entry_microseconds <= until_microseconds:
+					log_count += 1
+					# takeout ASCII Escape sequences from the message
+					entry['MESSAGE'] = strip_ansi_codes(entry['MESSAGE'])
+					logs.append(entry)
+			except Exception as e:
+				logging.warning(f"Error - log line: {log_count} {entry['_PID']} {entry['SYSLOG_IDENTIFIER']} : {e}")
+				error_count += 1
+		if error_count:
+			logging.info(f"Had {error_count} errors on journal import  - probably non character bytes")
 		# Sort logs by __REALTIME_TIMESTAMP in ascending order
 		sorted_logs = sorted(logs, key=lambda x: x.get("__REALTIME_TIMESTAMP", 0))
 		
@@ -257,7 +265,7 @@ def get_logs_from_Journalctl(date='yesterday'):
 
 	except Exception as e:
 		logging.error(f"Unexpected error: {e}")
-		return {}
+	return {}
 
 
 def transform_to_dict(data, keys, iso_date):
