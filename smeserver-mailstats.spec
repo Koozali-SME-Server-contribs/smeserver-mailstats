@@ -6,7 +6,7 @@ Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
 %define version 11.1
-%define release 4
+%define release 5
 Version: %{version}
 Release: %{release}%{?dist}
 License: GPL
@@ -35,6 +35,11 @@ A script that via cron.d e-mails mail statistics to admin on a daily basis.
 See http://www.contribs.org/bugzilla/show_bug.cgi?id=819
 
 %changelog
+* Tue Sep 02 2025 Brian Read <brianr@koozali.org> 11.1-5.sme
+- Speed up Journal access [SME: 13121]
+- Fix missing blacklist URL [SME: 13121]
+
+
 * Mon Sep 01 2025 Brian Read <brianr@koozali.org> 11.1-4.sme
 - More fixes for Journal bytes instead of characters [SME: 13117]
 
