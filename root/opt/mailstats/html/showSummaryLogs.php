@@ -172,7 +172,7 @@ function generateLogDataTable($logData) {
     $keys = array_keys($mergedData);
     $values = array_values($mergedData);
 
-    $output = '<table class="stripes" style="border-collapse: collapse; width:95%; overflow-x:auto; margin: 0.6% auto 0.6% auto;"><tbody>';
+	$output = '<table class="mailstats-summary stripes"><tbody>';
 
     // Divide keys and values into sets of 6
     $chunks = array_chunk($keys, 6);
@@ -202,77 +202,78 @@ function generateLogDataTable($logData) {
     <link rel="stylesheet" type="text/css" href="css/mailstats.css" />
 </head>
 <body>
-    <div style="width:100%; overflow-x:auto; font-size:0.726cqw">
-        <h1>
-            Summary Logs for Date: <?= e($date) ?>
-            <?= $hour === 99 ? ' (All Hours)' : ' at Hour: ' . e($hour) ?>
-        </h1>
-        <?php
-            $startRow = $totalRows > 0 ? ($offset + 1) : 0;
-            $endRow = min($offset + $limit, $totalRows);
-        ?>
-        <h3>Found <?= e($totalRows) ?> records. Showing <?= e($startRow) ?>–<?= e($endRow) ?>.</h3>
-
-        <table style="border-collapse:collapse; width:98%">
-            <thead>
-                <tr>
-                    <th>Id</th>
-                    <th>Details</th>
-                    <th>Log Data</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if ($result && $result->num_rows > 0): ?>
-                    <?php while ($row = $result->fetch_assoc()): ?>
-                        <?php
-                            $id = (int)$row['id'];
-                            $detailUrl = './ShowDetailedLogs.php?id=' . rawurlencode((string)$id);
-                        ?>
-                        <tr>
-                            <td><?= e($id) ?></td>
-                            <td><a href="<?= e($detailUrl) ?>">View details</a></td>
-                            <td><?= generateLogDataTable($row['logData']) ?></td>
-                        </tr>
-                    <?php endwhile; ?>
-                <?php else: ?>
+    <div class="mailstats-summary">
+        <div class="summary-container">
+            <h1>
+                Summary Logs for Date: <?= e($date) ?>
+                <?= $hour === 99 ? ' (All Hours)' : ' at Hour: ' . e($hour) ?>
+            </h1>
+            <?php
+                $startRow = $totalRows > 0 ? ($offset + 1) : 0;
+                $endRow = min($offset + $limit, $totalRows);
+            ?>
+            <h3>Found <?= e($totalRows) ?> records. Showing <?= e($startRow) ?>–<?= e($endRow) ?>.</h3>
+            
+            <table class="summary-table">
+                <thead>
                     <tr>
-                        <td colspan="3">No records found for the specified date and hour.</td>
+                        <th>Id</th>
+                        <th>Details</th>
+                        <th>Log Data</th>
                     </tr>
+                </thead>
+                <tbody>
+                    <?php if ($result && $result->num_rows > 0): ?>
+                        <?php while ($row = $result->fetch_assoc()): ?>
+                            <?php
+                                $id = (int)$row['id'];
+                                $detailUrl = './ShowDetailedLogs.php?id=' . rawurlencode((string)$id);
+                            ?>
+                            <tr>
+                                <td><?= e($id) ?></td>
+                                <td><a href="<?= e($detailUrl) ?>">View details</a></td>
+                                <td><?= generateLogDataTable($row['logData']) ?></td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="3">No records found for the specified date and hour.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+
+            <?php
+                // Pagination
+                $baseParams = [
+                    'date' => $date,
+                    'hour' => $hour,
+                    'page_size' => $pageSize
+                ];
+                $prevPage = $page > 1 ? $page - 1 : null;
+                $nextPage = ($offset + $limit) < $totalRows ? $page + 1 : null;
+            ?>
+            <div class="pagination">
+                <?php if ($prevPage !== null): ?>
+                    <?php
+                        $paramsPrev = $baseParams; $paramsPrev['page'] = $prevPage;
+                        $urlPrev = '?' . http_build_query($paramsPrev, '', '&', PHP_QUERY_RFC3986);
+                    ?>
+                    <a href="<?= e($urlPrev) ?>">&laquo; Previous</a>
                 <?php endif; ?>
-            </tbody>
-        </table>
-
-        <?php
-            // Simple pagination links
-            $baseParams = [
-                'date' => $date,
-                'hour' => $hour,
-                'page_size' => $pageSize
-            ];
-            $prevPage = $page > 1 ? $page - 1 : null;
-            $nextPage = ($offset + $limit) < $totalRows ? $page + 1 : null;
-        ?>
-        <div style="margin-top: 1em;">
-            <?php if ($prevPage !== null): ?>
-                <?php
-                    $paramsPrev = $baseParams; $paramsPrev['page'] = $prevPage;
-                    $urlPrev = '?' . http_build_query($paramsPrev, '', '&', PHP_QUERY_RFC3986);
-                ?>
-                <a href="<?= e($urlPrev) ?>">&laquo; Previous</a>
-            <?php endif; ?>
-
-            <?php if ($nextPage !== null): ?>
-                <?php
-                    $paramsNext = $baseParams; $paramsNext['page'] = $nextPage;
-                    $urlNext = '?' . http_build_query($paramsNext, '', '&', PHP_QUERY_RFC3986);
-                ?>
-                <?php if ($prevPage !== null): ?> | <?php endif; ?>
-                <a href="<?= e($urlNext) ?>">Next &raquo;</a>
-            <?php endif; ?>
+                <?php if ($nextPage !== null): ?>
+                    <?php
+                        $paramsNext = $baseParams; $paramsNext['page'] = $nextPage;
+                        $urlNext = '?' . http_build_query($paramsNext, '', '&', PHP_QUERY_RFC3986);
+                    ?>
+                    <?php if ($prevPage !== null): ?> | <?php endif; ?>
+                    <a href="<?= e($urlNext) ?>">Next &raquo;</a>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
+
     <?php
-        // Clean up
         if (isset($stmt) && $stmt instanceof mysqli_stmt) { $stmt->close(); }
         if (isset($conn) && $conn instanceof mysqli) { $conn->close(); }
     ?>

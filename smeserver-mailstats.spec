@@ -25,19 +25,24 @@ Requires:       python36
 # So install as:  dnf install smeserver-mailstats --enablerepo=epel,smecontribs
 Requires:	html2text
 Requires:	python3-chameleon
-Requires:   python3-mysql
-Requires:   python3-matplotlib
+Requires:  	python3-mysql
+Requires:   	python3-matplotlib
 Requires:	python3-pip
 AutoReqProv: no
 
 %description
 A script that via cron.d e-mails mail statistics to admin on a daily basis.
-See http://www.contribs.org/bugzilla/show_bug.cgi?id=819
+See https://wiki.koozali.org/mailstats
 
 %changelog
 * Tue Sep 02 2025 Brian Read <brianr@koozali.org> 11.1-5.sme
 - Speed up Journal access [SME: 13121]
 - Fix missing blacklist URL [SME: 13121]
+- Add extra security to php show summary page [SME: 13121]
+- Fix up CSS for Summary Page [SME: 13121]
+- Get Detail logs page working and prettyfy [SME: 13121]
+- Add in C wrapper source code to interrogate journal [SME: 13121]
+
 
 
 * Mon Sep 01 2025 Brian Read <brianr@koozali.org> 11.1-4.sme
@@ -133,6 +138,8 @@ perl createlinks
 /bin/rm -rf $RPM_BUILD_ROOT
 (cd root ; /usr/bin/find . -depth -print | /bin/cpio -dump $RPM_BUILD_ROOT)
 chmod +x $RPM_BUILD_ROOT/usr/bin/runmailstats.sh
+chown root:root $RPM_BUILD_ROOT/etc/mailstats/dp.php
+chmod 0600 $RPM_BUILD_ROOT/etc/mailstats/db.php
 # Define the placeholder and generate the current date and time
 now=$(date +"%Y-%m-%d %H:%M:%S")
 
@@ -146,7 +153,6 @@ sed -i "s|__BUILD_DATE_TIME__|$now|" $RPM_BUILD_ROOT/usr/bin/mailstats.py
 /usr/bin/pip3 install -q pymysql
 /usr/bin/pip3 install -q numpy
 /usr/bin/pip3 install -q pandas
-/usr/bin/pip3 install -q plotly
 
 %clean
 /bin/rm -rf $RPM_BUILD_ROOT

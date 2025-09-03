@@ -208,3 +208,100 @@ p.cssvalid,p.htmlvalid {float:left;margin-right:20px}
 .traffictable {border-collapse:collapse;width:98%}
 .divseeinbrowser{text-align:center;}
 .bordercollapse{border-collapse:collapse;}
+
+/* ==============================================
+   Summary Logs Section (scoped under .mailstats-summary)
+   ============================================== */
+.mailstats-summary .summary-container {
+    width: 100%;
+    overflow-x: auto;
+    font-size: 0.85vw;
+}
+
+/* Table styling */
+.mailstats-summary .summary-table {
+    border-collapse: collapse;
+    width: 98%;
+    font-size: inherit;
+}
+
+.mailstats-summary .summary-table th {
+    text-align: left;
+    padding: 0.5em;
+    border-bottom: 2px solid #ddd;
+    background-color: #f8f8f8;
+}
+
+.mailstats-summary .summary-table td {
+    padding: 0.5em;
+    border-bottom: 1px solid #ddd;
+    word-break: break-word;  /* Allows breaking long words at arbitrary points */
+    overflow-wrap: break-word; /* Modern standard for breaking long words */
+    hyphens: auto; /* Optionally adds hyphenation if supported */
+}
+
+/* Zebra striping */
+.mailstats-summary .summary-table tbody tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+/* Pagination */
+.mailstats-summary .pagination {
+    margin-top: 1em;
+}
+
+.mailstats-summary .pagination a {
+    text-decoration: none;
+    color: #0066cc;
+    padding: 0.3em 0.6em;
+}
+
+.mailstats-summary .pagination a:hover {
+    text-decoration: underline;
+}
+
+.mailstats-summary table.stripes {
+    border-collapse: collapse;
+    width: 95%;
+    overflow-x: auto;
+    margin: 0.6% auto;
+}
+
+/* Optional zebra striping */
+.mailstats-summary table.stripes tbody tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+/* ==============================================
+   Log Detail Page (scoped under .mailstats-detail)
+   ============================================== */
+.mailstats-detail .detail-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 1em auto;
+    padding: 0 1em;
+}
+
+/* Preformatted log box */
+.mailstats-detail .log {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: #111;
+    color: #eee;
+    padding: 1em;
+    border-radius: 6px;
+    font-family: monospace, monospace;
+    font-size: 0.95em;
+    line-height: 1.4;
+    overflow-x: auto;
+}
+
+/* Back link styling */
+.mailstats-detail a {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+.mailstats-detail a:hover {
+    text-decoration: underline;
+}
