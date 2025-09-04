@@ -94,7 +94,7 @@ if (!$pid || $pid < 1) {
 
 // Journal retrieval using C wrapper
 define('FFI_LIB', 'libjournalwrap.so');         // adjust if needed
-define('WRAPPER_BIN', '/usr/local/bin/journalwrap'); // fallback executable path
+define('WRAPPER_BIN', '/usr/bin/journalwrap'); // fallback executable path
 define('MAX_OUTPUT_BYTES', 2_000_000); // 2MB safety cap
 
 function getJournalByPidViaFFI(int $pid): ?string {

@@ -13,6 +13,9 @@ License: GPL
 Group: SME/addon
 Source: %{name}-%{version}.tgz
 
+%global _binaries_in_noarch_packages_terminate_build 0
+%global debug_package %{nil}
+
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-buildroot
 BuildArchitectures: noarch
 Requires: smeserver-release => 9.0
@@ -34,6 +37,57 @@ AutoReqProv: no
 %description
 A script that via cron.d e-mails mail statistics to admin on a daily basis.
 See https://wiki.koozali.org/mailstats
+
+%prep
+%setup
+
+%build
+perl createlinks
+
+%install
+/bin/rm -rf $RPM_BUILD_ROOT
+(cd root ; /usr/bin/find . -depth -print | /bin/cpio -dump $RPM_BUILD_ROOT)
+chmod +x $RPM_BUILD_ROOT/usr/bin/runmailstats.sh
+
+#chmod 0640 $RPM_BUILD_ROOT/etc/mailstats/db.php
+#ls -l /builddir/build/BUILDROOT/smeserver-mailstats-11.1-5.el8.sme.x86_64/etc/mailstats/ 
+#chown root:102 $RPM_BUILD_ROOT/etc/mailstats/db.php
+
+# Define the placeholder and generate the current date and time
+now=$(date +"%Y-%m-%d %H:%M:%S")
+
+# Replace the placeholder in the Python program located at %{BUILDROOT}/usr/bin
+sed -i "s|__BUILD_DATE_TIME__|$now|" $RPM_BUILD_ROOT/usr/bin/mailstats.py
+
+/bin/rm -f %{name}-%{version}-filelist
+/sbin/e-smith/genfilelist --file '/etc/mailstats/db.php' 'attr(0640, root, apache)' $RPM_BUILD_ROOT | grep -v "\.pyc" | grep -v "\.pyo"  > %{name}-%{version}-filelist
+
+install -Dpm 0755 journalwrap %{buildroot}%{_bindir}/journalwrap
+#install -Dpm 0644 libjournalwrap.so %{buildroot}%{_libdir}/libjournalwrap.so
+
+
+%pre
+/usr/bin/pip3 install -q pymysql
+/usr/bin/pip3 install -q numpy
+/usr/bin/pip3 install -q pandas
+
+%clean
+/bin/rm -rf $RPM_BUILD_ROOT
+
+%files -f %{name}-%{version}-filelist
+%defattr(-,root,root)
+#%attr(0640, root, apache) %config(noreplace) /etc/mailstats/db.php
+%{_bindir}/journalwrap
+
+#%{_libdir}/libjournalwrap.so
+
+
+%post
+/sbin/ldconfig
+usermod -aG systemd-journal www
+
+%postun
+/sbin/ldconfig
 
 %changelog
 * Tue Sep 02 2025 Brian Read <brianr@koozali.org> 11.1-5.sme
@@ -128,37 +182,3 @@ See https://wiki.koozali.org/mailstats
 
 * Sat May 26 2012 Brian J read <brianr@bjsystems.co.uk> 1.0-1.sme
 - Initial version
-
-%prep
-%setup
-
-%build
-perl createlinks
-
-%install
-/bin/rm -rf $RPM_BUILD_ROOT
-(cd root ; /usr/bin/find . -depth -print | /bin/cpio -dump $RPM_BUILD_ROOT)
-chmod +x $RPM_BUILD_ROOT/usr/bin/runmailstats.sh
-#chmod 0640 $RPM_BUILD_ROOT/etc/mailstats/db.php
-#ls -l /builddir/build/BUILDROOT/smeserver-mailstats-11.1-5.el8.sme.x86_64/etc/mailstats/ 
-#chown root:102 $RPM_BUILD_ROOT/etc/mailstats/db.php
-# Define the placeholder and generate the current date and time
-now=$(date +"%Y-%m-%d %H:%M:%S")
-
-# Replace the placeholder in the Python program located at %{BUILDROOT}/usr/bin
-sed -i "s|__BUILD_DATE_TIME__|$now|" $RPM_BUILD_ROOT/usr/bin/mailstats.py
-
-/bin/rm -f %{name}-%{version}-filelist
-/sbin/e-smith/genfilelist $RPM_BUILD_ROOT | grep -v "\.pyc" | grep -v "\.pyo"  > %{name}-%{version}-filelist
-
-%pre
-/usr/bin/pip3 install -q pymysql
-/usr/bin/pip3 install -q numpy
-/usr/bin/pip3 install -q pandas
-
-%clean
-/bin/rm -rf $RPM_BUILD_ROOT
-
-%files -f %{name}-%{version}-filelist
-%defattr(-,root,root)
-%attr(0640, root, apache) %config(noreplace) /etc/mailstats/db.php
