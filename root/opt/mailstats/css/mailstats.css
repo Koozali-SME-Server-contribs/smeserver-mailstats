@@ -305,3 +305,43 @@ p.cssvalid,p.htmlvalid {float:left;margin-right:20px}
 .mailstats-detail a:hover {
     text-decoration: underline;
 }
+
+/* ==============================================
+   Status header at top of table (scoped under emailstatus)
+   ============================================== */
+.emailstatus-wrapper {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+}
+.emailstatus-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.emailstatus-tablecontainer {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.emailstatus-table {
+  border-collapse: collapse;
+  min-width: 300px;
+  flex: 1 1 45%;
+}
+.emailstatus-table th {
+  background-color: #a9a9a9;
+  color: black;
+  text-align: left;
+  padding: 8px;
+}
+.emailstatus-table td {
+  padding: 8px;
+  border: 1px solid #ddd;
+}
+.emailstatus-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+@media (max-width: 768px) {
+  .emailstatus-tablecontainer {
+	flex-direction: column;
+  }
+}

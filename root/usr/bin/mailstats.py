@@ -1020,6 +1020,9 @@ def replace_between(text, start, end, replacement):
     replaced_text = re.sub(pattern, replacement, text, flags=re.DOTALL)
     return replaced_text
     
+def assemble_heading_row(label,value):
+	return f"<tr><td>{label}</td><td>{value}</td><tr>"
+    
 def get_heading():
 	#
 	# Needs from anaytsis
@@ -1037,44 +1040,50 @@ def get_heading():
 
 	# Clam Version/DB Count/Last DB update
 	clam_output = subprocess.getoutput("freshclam -V")
-	clam_info = f"Clam Version/DB Count/Last DB update: {clam_output}"
+	clam_info = assemble_heading_row("Clam Version/DB Count/Last DB update:", clam_output)
 
 	# SpamAssassin Version
 	sa_output = subprocess.getoutput("spamassassin -V")
-	sa_info = f"SpamAssassin Version: {sa_output}"
+	sa_info = assemble_heading_row("SpamAssassin Version: ",sa_output)
 
 	# Tag level and Reject level
-	tag_reject_info = f"Tag level: {SATagLevel}; Reject level: {SARejectLevel} {warnnoreject}"
+	tag_reject_info = assemble_heading_row("Tag level:",SATagLevel) 
+	tag_reject_info += assemble_heading_row("Reject level: ",f"{SARejectLevel} {warnnoreject}")
 
 	# SMTP connection stats
-	smtp_stats = f"External SMTP connections accepted: {totalexternalsmtpsessions}\n"\
-				 f"Internal SMTP connections accepted: {totalinternalsmtpsessions}"
+	smtp_stats = assemble_heading_row("External SMTP connections accepted:",totalexternalsmtpsessions)
+	smtp_stats +=  assemble_heading_row("Internal SMTP connections accepted:",totalinternalsmtpsessions)
 
 	if len(connection_type_counts)>0:
 		for connection_type in connection_type_counts.keys():
-			smtp_stats += f"\nCount of {connection_type} connections: {connection_type_counts[connection_type]}"
+			smtp_stats += assemble_heading_row(f"\nCount of {connection_type} connections:",connection_type_counts[connection_type])
 
 	if len(total_ports)>0:
 		for port_number in total_ports.keys():
-			smtp_stats += f"\nCount of port {port_number} connections: {total_ports[port_number]}"
+			smtp_stats += assemble_heading_row(f"\nCount of port {port_number} connections: ",total_ports[port_number])
 
-	smtp_stats = smtp_stats + f"\nEmails per hour: {emailperhour:.1f}/hr\n"\
-				 f"Average spam score (accepted): {spamavg or 0:.2f}\n"\
-				 f"Average spam score (rejected): {rejectspamavg or 0:.2f}\n"\
-				 f"Average ham score: {hamavg or 0:.2f}\n"\
-				 f"Number of DMARC reporting emails sent: {DMARCSendCount or 0} (not shown on table)"
+	rows = [
+	assemble_heading_row("Emails per hour:", f"{(emailperhour if emailperhour is not None else 0):.1f}/hr"),
+	assemble_heading_row("Average spam score (accepted):", f"{(spamavg if spamavg is not None else 0):.2f}"),
+	assemble_heading_row("Average spam score (rejected):", f"{(rejectspamavg if rejectspamavg is not None else 0):.2f}"),
+	assemble_heading_row("Average ham score:", f"{(hamavg if hamavg is not None else 0):.2f}"),
+	assemble_heading_row("Number of DMARC reporting emails sent:", f"{DMARCSendCount if DMARCSendCount is not None else 0} (not shown on table)"),
+	]
+	smtp_stats += " ".join(rows)  # or "\n".join(rows) if assemble_heading_row doesn’t add its own newline
 
 	# DMARC approved emails
 	dmarc_info = ""
 	if hamcount != 0:
 		dmarc_ok_percentage = DMARCOkCount * 100 / hamcount
-		dmarc_info = f"Number of emails approved through DMARC: {DMARCOkCount or 0} ({dmarc_ok_percentage:.2f}% of Ham count)"
+		dmarc_info = assemble_heading_row("Number of emails approved through DMARC:",f"{DMARCOkCount or 0} ({dmarc_ok_percentage:.2f}% of Ham count)")
 
 	# Accumulate all strings
-	header_str = "\n".join([clam_info, sa_info, tag_reject_info, smtp_stats, dmarc_info])
+	#header_str = "<br />".join([clam_info, sa_info, tag_reject_info, smtp_stats, dmarc_info])
 	# switch newlines to <br />
-	header_str = header_str.replace("\n","<br />")
-	return header_str
+	#header_str = header_str.replace("\n","<br />")
+	header_str1 = clam_info + sa_info + tag_reject_info
+	header_str2 = smtp_stats + dmarc_info
+	return header_str1,header_str2
 	
 def scan_mail_users():
 	#
@@ -1181,7 +1190,7 @@ def extract_blacklist_domain(text):
     """
     s = text if isinstance(text, str) else str(text or "")
     s_lower = s.lower()
-    logging.info(f"extract blacklist called:{text}")
+    logging.debug(f"extract blacklist called:{text}")
 
     combined = ",".join([RBLList, SBLList, UBLList])
 
@@ -1213,7 +1222,7 @@ def extract_blacklist_domain(text):
 
     for part in combined.split(","):
         entry = part.strip()
-        logging.info(f"Comparing: {entry}")
+        logging.debug(f"Comparing: {entry}")
         if not entry:
             continue
 
@@ -1868,8 +1877,10 @@ if __name__ == "__main__":
 		
 	total_html = rendered_html
 	# Add in the header information
-	header_rendered_html = get_heading()
-	total_html =  insert_string_after(total_html,header_rendered_html, "<!---Add in header information here -->")
+	header_rendered_html1,header_rendered_html2 = get_heading()
+	total_html =  insert_string_after(total_html,header_rendered_html1, "<!---Add in table1 information here -->")
+	total_html =  insert_string_after(total_html,header_rendered_html2, "<!---Add in table2 information here -->")
+	header_rendered_html = header_rendered_html1 + header_rendered_html2
 
 	#add in the subservient tables..(remeber they appear in the reverse order of below!)
 

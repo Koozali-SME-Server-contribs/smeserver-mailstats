@@ -16,9 +16,30 @@
     <br />
     <h2>${structure:title}</h2>
     <br />
-    <div class="headerpanel">
-		<div class = "innerheaderpanel">
-			<!---Add in header information here -->
+	<div class="emailstatus-wrapper">
+		<h2 class="emailstatus-header">Email System Status</h2>
+		<div class="emailstatus-tablecontainer">
+			<!-- Table 1 -->
+			<table class="emailstatus-table">
+			<thead>
+			  <tr>
+				<th colspan="2">Security & Filtering</th>
+			  </tr>
+			</thead>
+			<tbody>
+				<!---Add in table1 information here -->
+			</tbody>
+			</table>
+			<table class="emailstatus-table">
+			<thead>
+			<tr>
+				<th colspan="2">Mail Traffic Statistics</th>
+			</tr>
+			</thead>
+			<tbody>
+				<!---Add in table2 information here -->
+			</tbody>
+			</table>
 		</div>
     </div>
     <br />

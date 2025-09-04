@@ -28,6 +28,7 @@ Requires:	python3-chameleon
 Requires:  	python3-mysql
 Requires:   	python3-matplotlib
 Requires:	python3-pip
+Requires:       systemd-libs
 AutoReqProv: no
 
 %description
@@ -42,8 +43,8 @@ See https://wiki.koozali.org/mailstats
 - Fix up CSS for Summary Page [SME: 13121]
 - Get Detail logs page working and prettyfy [SME: 13121]
 - Add in C wrapper source code to interrogate journal [SME: 13121]
-
-
+- Get permission and ownership right for /etc/mailstats/db.php [SME: 13121]
+- Refactor main table header into two tables side by side [SME: 13121]
 
 * Mon Sep 01 2025 Brian Read <brianr@koozali.org> 11.1-4.sme
 - More fixes for Journal bytes instead of characters [SME: 13117]
@@ -138,8 +139,9 @@ perl createlinks
 /bin/rm -rf $RPM_BUILD_ROOT
 (cd root ; /usr/bin/find . -depth -print | /bin/cpio -dump $RPM_BUILD_ROOT)
 chmod +x $RPM_BUILD_ROOT/usr/bin/runmailstats.sh
-chown root:root $RPM_BUILD_ROOT/etc/mailstats/dp.php
-chmod 0600 $RPM_BUILD_ROOT/etc/mailstats/db.php
+#chmod 0640 $RPM_BUILD_ROOT/etc/mailstats/db.php
+#ls -l /builddir/build/BUILDROOT/smeserver-mailstats-11.1-5.el8.sme.x86_64/etc/mailstats/ 
+#chown root:102 $RPM_BUILD_ROOT/etc/mailstats/db.php
 # Define the placeholder and generate the current date and time
 now=$(date +"%Y-%m-%d %H:%M:%S")
 
@@ -159,3 +161,4 @@ sed -i "s|__BUILD_DATE_TIME__|$now|" $RPM_BUILD_ROOT/usr/bin/mailstats.py
 
 %files -f %{name}-%{version}-filelist
 %defattr(-,root,root)
+%attr(0640, root, apache) %config(noreplace) /etc/mailstats/db.php
