@@ -3,6 +3,7 @@
 	<meta charset="utf-8">
 	<title>SMEServer Mailstats</title>
 	<link rel='stylesheet' type='text/css' href='css/mailstats.css' />
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
 	<!-- Check links -->
 	<!--css here-->
 </head>

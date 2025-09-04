@@ -6,7 +6,7 @@ Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
 %define version 11.1
-%define release 5
+%define release 6
 Version: %{version}
 Release: %{release}%{?dist}
 License: GPL
@@ -90,6 +90,9 @@ usermod -aG systemd-journal www
 /sbin/ldconfig
 
 %changelog
+* Thu Sep 04 2025 Brian Read <brianr@koozali.org> 11.1-6.sme
+- Add favicon to mailstats table, summary and detailed pages [SME: 13121]
+
 * Tue Sep 02 2025 Brian Read <brianr@koozali.org> 11.1-5.sme
 - Speed up Journal access [SME: 13121]
 - Fix missing blacklist URL [SME: 13121]

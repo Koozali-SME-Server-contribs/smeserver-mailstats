@@ -227,6 +227,8 @@ $conn->close();
     <meta charset="UTF-8">
     <title>Log details for PID <?= e($pid) ?> (record <?= e($id) ?>)</title>
     <link rel="stylesheet" type="text/css" href="css/mailstats.css" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+
 </head>
 <body>
     <div class="mailstats-detail">
