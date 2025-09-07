@@ -77,7 +77,7 @@
 	
 		<div class=dbwanted>
 		
-	
+<!--
 		<h2 class='subh2'><%=l('mst_Details_for_connection_to_database')%></h2>
 	
 		<p><span class=label>
@@ -108,7 +108,7 @@
 			% param 'DBPassword' => $mst_data->{DBPassword} unless param 'DBPassword';
 			%=password_field 'DBPassword', class => 'pass13 sme-password', autocomplete => 'off'
 		</span></p>
-		
+-->
 	
 		</div>
 		

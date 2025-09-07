@@ -454,23 +454,28 @@ def create_graph(data_dict, graph_type="line", output_file="graph.png",iso_date=
     # return data
 
 def save_summaries_to_db(cursor, conn, date_str, hour, parsed_data):
-    # Convert parsed_data to JSON string
     global count_records_to_db
     json_data = json.dumps(parsed_data)
-
-    # Insert the record
     insert_query = """
     INSERT INTO SummaryLogs (Date, Hour, logData)
     VALUES (%s, %s, %s)
     """
-   
     try:
+        # Check if the cursor is open (pymysql has no explicit is_closed; handle by try/except)
         cursor.execute(insert_query, (date_str, hour, json_data))
         conn.commit()
         count_records_to_db += 1
     except pymysql.Error as err:
-        logging.error(f"DB Error {date_str} {hour} : {err}")
+        # Handle cursor closed or other DB errors
+        if 'closed' in str(err).lower():
+            logging.error(f"DB Error {date_str} {hour} : Cursor is closed. Check connection handling.")
+        else:
+            logging.error(f"DB Error {date_str} {hour} : {err}")
         conn.rollback()
+    except Exception as ex:
+        logging.error(f"Unexpected DB Error {date_str} {hour} : {ex}")
+        conn.rollback()
+
                 
 def is_running_under_thonny():
     # Check for the 'THONNY_USER_DIR' environment variable
@@ -1251,6 +1256,41 @@ def format_duration(seconds: float) -> str:
     return str(timedelta(seconds=seconds))
 
 
+DB_CONFIG_PATH = '/etc/mailstats/db.php'
+
+def parse_php_config(path):
+    # Read file as text and extract key-value pairs using regex
+    try:
+        with open(path, 'r') as f:
+            content = f.read()
+            cfg = {}
+            for match in re.finditer(r"'(\w+)'\s*=>\s*'([^']*)'", content):
+                cfg[match.group(1)] = match.group(2)
+            return cfg
+    except Exception as e:
+        logging.error(f"Could not parse PHP config file: {e}")
+        return {}
+
+def load_db_config():
+    db_host = os.environ.get('MAILSTATS_DB_HOST', 'localhost')
+    db_user = os.environ.get('MAILSTATS_DB_USER', '')
+    db_pass = os.environ.get('MAILSTATS_DB_PASS', '')
+    db_name = os.environ.get('MAILSTATS_DB_NAME', '')
+    
+    if db_user == '' or db_pass == '' or db_name == '':
+        if os.path.isfile(DB_CONFIG_PATH) and os.access(DB_CONFIG_PATH, os.R_OK):
+            cfg = parse_php_config(DB_CONFIG_PATH)
+            db_host = cfg.get('host', db_host)
+            db_user = cfg.get('user', db_user)
+            db_pass = cfg.get('pass', db_pass)
+            db_name = cfg.get('name', db_name)
+    
+    if db_user == '' or db_pass == '' or db_name == '':
+        logging.error('DB credentials missing (env and config file).')
+        raise RuntimeError('DB credentials missing (env and config file)')
+    
+    return db_host, db_user, db_pass, db_name
+
 if __name__ == "__main__":
 	start_time = datetime.now()
 	try:
@@ -1336,16 +1376,15 @@ if __name__ == "__main__":
 	# Db save control
 	saveData = get_value(ConfigDB,"mailstats","SaveDataToMySQL","no") == 'yes' or forceDbSave
 	logging.debug(f"Save Mailstats to DB set:{saveData} ")
-
 	if saveData:
-		# Connect to MySQL DB for saving
-		DBName = "mailstats"
-		DBHost = get_value(ConfigDB, 'mailstats', 'DBHost', "localhost")
-		DBPort = int(get_value(ConfigDB, 'mailstats', 'DBPort', "3306"))  # Ensure port is an integer
-		DBPassw = 'mailstats'
-		DBUser = 'mailstats'
-		UnixSocket = "/var/lib/mysql/mysql.sock" 
-
+		# Database config retrieval
+		try:
+			DBHost, DBUser, DBPassw, DBName = load_db_config()
+			DBPort = 3306  # If you want configurability, load this from config too
+			UnixSocket = "/var/lib/mysql/mysql.sock"
+		except RuntimeError as err:
+			logging.error(f"Database config error: {err}")
+			saveData = False
 		# Try to establish a database connection
 		try:
 			conn = pymysql.connect(
@@ -1355,7 +1394,7 @@ if __name__ == "__main__":
 				database=DBName,
 				port=DBPort,
 				unix_socket=UnixSocket,
-				cursorclass=pymysql.cursors.DictCursor  # Optional: use DictCursor for dict output
+				cursorclass=pymysql.cursors.DictCursor
 			)
 			cursor = conn.cursor()
 			# Check if the table exists before creating it
@@ -1363,33 +1402,36 @@ if __name__ == "__main__":
 			cursor.execute(check_table_query)
 			table_exists = cursor.fetchone()
 			if not table_exists:
-				# Create table if it doesn't exist
 				cursor.execute("""
-				CREATE TABLE IF NOT EXISTS SummaryLogs (
-					id INT AUTO_INCREMENT PRIMARY KEY,
-					Date DATE,
-					Hour INT,
-					logData TEXT
-				)
+					CREATE TABLE IF NOT EXISTS SummaryLogs (
+						id INT AUTO_INCREMENT PRIMARY KEY,
+						Date DATE,
+						Hour INT,
+						logData TEXT
+					)
 				""")
+			
 			# Delete existing records for the given date
 			try:
 				delete_query = """
-				DELETE FROM SummaryLogs
-				WHERE Date = %s
+					DELETE FROM SummaryLogs
+					WHERE Date = %s
 				"""
-				cursor.execute(delete_query, (analysis_date,))  # Don't forget the extra comma for tuple
-				# Get the number of records deleted
+				cursor.execute(delete_query, (analysis_date,))
 				rows_deleted = cursor.rowcount
 				if rows_deleted > 0:
-					logging.debug(f"Deleted {rows_deleted} rows for {analysis_date} ")
+					logging.debug(f"Deleted {rows_deleted} rows for {analysis_date}")
 			except pymysql.Error as e:
-				logging.error(f"SQL Delete failed ({delete_query}) ({e}) ")
-
+				logging.error(f"SQL Delete failed ({delete_query}) ({e})")
+			
+			# Commit changes & close resources after all DB operations
+			conn.commit()
+			#cursor.close()
+			#conn.close()
 		except pymysql.Error as e:
-			logging.error(f"Unable to connect to {DBName} on {DBHost} port {DBPort} error ({e}) ")
+			logging.error(f"Unable to connect to {DBName} on {DBHost} port {DBPort} error ({e})")
 			saveData = False
-	
+
 	nolinks = not saveData 
 	# Needed to identify blacklist used to reject emails.
 	if get_value(ConfigDB,"qpsmtpd","RHSBL").lower() == 'enabled':

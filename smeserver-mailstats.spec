@@ -92,6 +92,8 @@ usermod -aG systemd-journal www
 %changelog
 * Thu Sep 04 2025 Brian Read <brianr@koozali.org> 11.1-6.sme
 - Add favicon to mailstats table, summary and detailed pages [SME: 13121]
+- Bring DB config reading for mailstats itself inline with php summary and detailed logs - using /etc/mailstats/db.php
+- Remove DB config fields from the SM2 config panel
 
 * Tue Sep 02 2025 Brian Read <brianr@koozali.org> 11.1-5.sme
 - Speed up Journal access [SME: 13121]
