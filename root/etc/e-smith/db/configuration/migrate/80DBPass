@@ -1,0 +1,16 @@
+{
+    use MIME::Base64 qw(encode_base64);
+
+    my $rec = $DB->get('mailstats') || $DB->new_record('mailstats', {type => 'report'});
+
+    my $pw = $rec->prop('DBPass');
+    return "" if $pw;
+
+    my $length = shift || 16; 
+
+    my @chars = ('A'..'Z', 'a'..'z', 0..9, qw(! @ $ % ^ & * ? _ - + =));
+    $pw = '';
+    $pw  .= $chars[rand @chars] for 1..$length;
+    $rec->set_prop('DBPass', $pw);
+    return ""
+}

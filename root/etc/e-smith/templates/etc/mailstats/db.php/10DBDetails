@@ -1,0 +1,24 @@
+{
+    # Load SME::ConfigDB to read values from DB
+    my $cdb = esmith::ConfigDB->open() || die "Cannot open configuration DB\n";
+
+    # Get the fragment (report database definition)
+    my $report = $cdb->get('mailstats');
+
+    my $dbhost = $report->prop('DBHost') || 'localhost';
+    my $dbport = $report->prop('DBPort') || '3306';
+    my $dbuser = $report->prop('DBUser') || 'mailstats_rw';
+    # Assume password is stored in a property 'DBPass'
+    my $dbpass = $report->prop('DBPass') || 'changeme';
+    my $dbname = $report->key  || 'mailstats';
+
+    $OUT = <<"END";
+<?php
+return [
+  'host' => '$dbhost',
+  'user' => '$dbuser',
+  'pass' => '$dbpass',
+  'name' => '$dbname',
+];
+END
+}

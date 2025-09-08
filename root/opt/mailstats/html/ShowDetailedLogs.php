@@ -24,7 +24,9 @@ $dbname     = getenv('MAILSTATS_DB_NAME') ?: '';
 if ($username === '' || $password === '' || $dbname === '') {
     $cfgPath = '/etc/mailstats/db.php'; // optional fallback config file
     if (is_readable($cfgPath)) {
-        $cfg = include $cfgPath;
+		ob_start();
+			$cfg = include $cfgPath;
+		ob_end_clean();
         $servername = $cfg['host'] ?? $servername;
         $username   = $cfg['user'] ?? $username;
         $password   = $cfg['pass'] ?? $password;

@@ -111,7 +111,7 @@ except ImportError:
 	logging.warning("Matplotlib is not installed  - no graphs")
 	enable_graphs = False;
 
-Mailstats_version = '1.2'
+Mailstats_version = '1.3'
 build_date_time = "2024-06-18 12:03:40OURCE" 
 build_date_time = build_date_time[:19]  #Take out crap that sneaks in.
 
@@ -123,7 +123,6 @@ data_file_path = script_dir+'/../..'    #back to the top
 now = datetime.now()
 yesterday = now - timedelta(days=1)
 formatted_yesterday = yesterday.strftime("%Y-%m-%d")
-#html_page_path = data_file_path+"/home/e-smith/files/ibays/mesdb/html/mailstats/"
 html_page_dir = data_file_path+"/opt/mailstats/html/"
 template_dir = data_file_path+"/opt/mailstats/templates/"
 logs_dir = data_file_path+"/opt/mailstats/logs/"
@@ -1374,7 +1373,7 @@ if __name__ == "__main__":
 	count_records_to_db = 0;
 	
 	# Db save control
-	saveData = get_value(ConfigDB,"mailstats","SaveDataToMySQL","no") == 'yes' or forceDbSave
+	saveData = get_value(ConfigDB,"mailstats","SaveDataToMySQL","yes") == 'yes' or forceDbSave
 	logging.debug(f"Save Mailstats to DB set:{saveData} ")
 	if saveData:
 		# Database config retrieval

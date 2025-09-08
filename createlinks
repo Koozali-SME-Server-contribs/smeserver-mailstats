@@ -6,8 +6,9 @@ $event = 'smeserver-mailstats-update';
 #see the /etc/systemd/system-preset/49-koozali.preset should be present for systemd integration on all you yum update event
 
 foreach my $file (qw(
-                /etc/systemd/system-preset/49-koozali.preset
-		/etc/e-smith/sql/init/99smeserver-mailstats.sql
+		/etc/systemd/system-preset/49-koozali.preset
+		/etc/mailstats/db.php
+		/etc/e-smith/sql/init/99mailstats
 		/etc/httpd/conf/httpd.conf
 ))
 {
@@ -20,7 +21,7 @@ event_link('systemd-reload', $event, '50');
 #event_link('action', $event, '30');
 #services we need to restart
 safe_symlink('restart', "root/etc/e-smith/events/$event/services2adjust/httpd-e-smith");
+safe_symlink("restart", "root/etc/e-smith/events/$event/services2adjust/mysql.init");;
 #and Server Mmanager panel link
 #panel_link('somefunction', 'manager');
-
-templates2events("/etc/e-smith/sql/init/99smeserver-mailstats.sql", "post-upgrade");
+#templates2events("/etc/e-smith/sql/init/99smeserver-mailstats.sql", "post-upgrade");

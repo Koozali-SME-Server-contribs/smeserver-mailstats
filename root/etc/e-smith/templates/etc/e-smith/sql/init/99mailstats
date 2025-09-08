@@ -1,0 +1,24 @@
+{
+    my $db = $mailstats{DBName} || 'mailstats';
+    my $user = $mailstats{DBUser} || 'mailstats_rw';
+    my $pass = $mailstats{DBPass} || 'changeme';
+    $OUT .= <<END
+#! /bin/sh
+    if [ -d /var/lib/mysql/mailstats ]; then
+      exit
+    fi
+    /usr/bin/mariadb <<EOF
+    CREATE DATABASE $db DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+    USE $db;
+	CREATE TABLE IF NOT EXISTS SummaryLogs (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		Date DATE,
+		Hour INT,
+		logData TEXT
+	);
+	CREATE USER $user@localhost IDENTIFIED BY '$pass';
+	GRANT SELECT, INSERT, UPDATE, DELETE ON $db.* TO $user@localhost;
+	FLUSH PRIVILEGES;
+EOF
+END
+}
