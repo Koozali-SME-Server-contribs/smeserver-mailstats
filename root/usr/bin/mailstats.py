@@ -113,7 +113,9 @@ except ImportError:
 
 Mailstats_version = '1.3'
 build_date_time = "2024-06-18 12:03:40OURCE" 
-build_date_time = build_date_time[:19]  #Take out crap that sneaks in.
+#Take out the crap that sneaks in...
+build_date_time = build_date_time[:19]  
+Mailstats_version = Mailstats_version[:6]
 
 #if build_date_time == "2024-06-18 12:03:40OURCE":
 #    build_date_time = "Unknown"

@@ -6,7 +6,8 @@ Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
 %define version 11.1
-%define release 8
+%define release 9
+%define full_version %{version}.%{release})
 Version: %{version}
 Release: %{release}%{?dist}
 License: GPL
@@ -49,21 +50,15 @@ perl createlinks
 (cd root ; /usr/bin/find . -depth -print | /bin/cpio -dump $RPM_BUILD_ROOT)
 chmod +x $RPM_BUILD_ROOT/usr/bin/runmailstats.sh
 
-#chmod 0640 $RPM_BUILD_ROOT/etc/mailstats/db.php
-#ls -l /builddir/build/BUILDROOT/smeserver-mailstats-11.1-5.el8.sme.x86_64/etc/mailstats/ 
-#chown root:102 $RPM_BUILD_ROOT/etc/mailstats/db.php
-
-# Define the placeholder and generate the current date and time
 now=$(date +"%Y-%m-%d %H:%M:%S")
-
-# Replace the placeholder in the Python program located at %{BUILDROOT}/usr/bin
-sed -i "s|__BUILD_DATE_TIME__|$now|" $RPM_BUILD_ROOT/usr/bin/mailstats.py
+# Replace placeholders in the Python program using sed
+perl -pi -e 'if (!$done && s/^Mailstats_version *=.*/Mailstats_version = '\''%{full_version}'\'/') { $done = 1 }' $RPM_BUILD_ROOT/usr/bin/mailstats.py
+perl -pi -e 'if (!$done && s/^build_date_time *=.*/build_date_time = "'"$now"'"/) { $done = 1 }' $RPM_BUILD_ROOT/usr/bin/mailstats.py
 
 /bin/rm -f %{name}-%{version}-filelist
 /sbin/e-smith/genfilelist --file '/etc/mailstats/db.php' 'attr(0640, root, apache)' $RPM_BUILD_ROOT | grep -v "\.pyc" | grep -v "\.pyo"  > %{name}-%{version}-filelist
 
 install -Dpm 0755 journalwrap %{buildroot}%{_bindir}/journalwrap
-#install -Dpm 0644 libjournalwrap.so %{buildroot}%{_libdir}/libjournalwrap.so
 
 
 %pre
@@ -93,6 +88,9 @@ chmod u+s /usr/bin/journalwrap
 /sbin/ldconfig
 
 %changelog
+* Fri Sep 12 2025 Brian Read <brianr@koozali.org> 11.1-9.sme
+- Fix version and build date from spec file  [SME: 13121]
+
 * Fri Sep 12 2025 Brian Read <brianr@koozali.org> 11.1-8.sme
 - Remove www from systemd-journal group and setuid bit in journal wrapper [SME: 13121]
 
