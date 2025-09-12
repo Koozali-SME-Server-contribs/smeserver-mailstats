@@ -6,7 +6,7 @@ Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
 %define version 11.1
-%define release 7
+%define release 8
 Version: %{version}
 Release: %{release}%{?dist}
 License: GPL
@@ -84,12 +84,18 @@ install -Dpm 0755 journalwrap %{buildroot}%{_bindir}/journalwrap
 
 %post
 /sbin/ldconfig
-usermod -aG systemd-journal www
+#Remove www from systemd-journal group as is potential security risk
+gpasswd -d  www systemd-journal
+# and set setuid bit for c wrapper called from log detail web page
+chmod u+s /usr/bin/journalwrap
 
 %postun
 /sbin/ldconfig
 
 %changelog
+* Fri Sep 12 2025 Brian Read <brianr@koozali.org> 11.1-8.sme
+- Remove www from systemd-journal group and setuid bit in journal wrapper [SME: 13121]
+
 * Fri Sep 12 2025 Brian Read <brianr@koozali.org> 11.1-7.sme
 - Truncate Geoip table and add other category [SME: 13121]
 - Cope with blank data in action1 [SME: 13121]
