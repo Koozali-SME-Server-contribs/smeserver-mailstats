@@ -833,8 +833,124 @@ def split_timestamp_and_data(log_entry: str) -> list:
 		timestamp = None
 		rest_of_line = log_entry  # If no match, return the whole line
 	return [timestamp, rest_of_line]
-	
-def render_sub_table(table_title, table_headers, found_values, get_character=None, suppress_threshold=False):
+
+MIN_COUNT = 3               # Hide entries with count < 5
+MAX_TOTAL_ROWS = 10         # Total rows INCLUDING "Other"
+OTHER_TARGET_FRAC = 0.01    # Strictly less than 1%
+OTHER_LABEL = 'Other'
+SHOW_ALL = True            # Set True to show all entries >= MIN_COUNT, no "Other" row
+
+
+def select_rows_just_below(items, min_count=MIN_COUNT, 
+                            max_total_rows=MAX_TOTAL_ROWS, 
+                            other_target_frac=OTHER_TARGET_FRAC,
+                            other_label=OTHER_LABEL, show_all=SHOW_ALL):
+    """
+    Build rows with percentages of total (0..100).
+    - If show_all is True: show all entries with count >= min_count, no 'Other', ignore caps and 1% target.
+    - If show_all is False: pick as many top entries (count >= min_count) as needed so that
+      'Other' is strictly < other_target_frac (if possible), always include 'Other(n)',
+      and respect max_total_rows (including 'Other').
+
+    Output rows preserve original extra fields for selected entries.
+    The percent is written to field index 2 (replacing it if present, or appended if not).
+    """
+
+    # Normalize items to a list while preserving original rows
+    def to_rows(seq):
+        if isinstance(seq, dict):
+            # Convert dict to rows without extras
+            return [(k, v) for k, v in seq.items()]
+        rows_ = []
+        for it in seq:
+            if isinstance(it, (tuple, list)) and len(it) >= 2:
+                rows_.append(tuple(it))  # store as tuple
+            else:
+                raise TypeError("Each item must be a (key, count, ...) tuple/list or a dict mapping key->count.")
+        return rows_
+
+    def set_percent(row, pct_value):
+        # Return a tuple like the input row but with percent inserted at index 2 (0..100 number, rounded)
+        pct_value = round(pct_value, 2)
+        r = list(row)
+        if len(r) >= 3:
+            r[2] = pct_value
+        else:
+            r.append(pct_value)
+        return tuple(r)
+
+    rows_in = to_rows(items)
+
+    total = sum(r[1] for r in rows_in)
+    if total == 0:
+        return ([(f"{other_label}(0)", 0, 0.0)] if not show_all else []), 0, "No data."
+
+    # Filter by min_count and sort by count desc
+    eligible = [r for r in rows_in if r[1] >= min_count]
+    eligible.sort(key=lambda r: r[1], reverse=True)
+
+    if show_all:
+        # Show all eligible rows, no 'Other', ignore caps/target; compute percent (0..100) per row
+        rows_out = [set_percent(r, (r[1] / total) * 100.0) for r in eligible]
+        return rows_out, total, None
+
+    #logging.info(f"{show_all}")
+    # Leave room for the "Other" row
+    max_top_cap = max(0, max_total_rows - 1)
+
+    # Find smallest number of top rows so that Other is strictly < target
+    cum = 0
+    needed_top = None
+    for i, r in enumerate(eligible, start=1):
+        cum += r[1]
+        other_frac = (total - cum) / total
+        if other_frac < other_target_frac:
+            needed_top = i
+            break
+
+    notes = []
+
+    if needed_top is None:
+        # Even after including all eligible, Other >= target
+        final_top = min(len(eligible), max_top_cap)
+        #if final_top < len(eligible):
+            #notes.append(f"Row cap prevents adding enough rows to push Other below {other_target_frac*100:.2f}%.")
+        #else:
+            #notes.append(f"Cannot push Other below {other_target_frac*100:.2f}% with MIN_COUNT={min_count}.")
+    else:
+        # Apply cap
+        if needed_top > max_top_cap:
+            final_top = max_top_cap
+            #notes.append(
+            #    f"Row cap prevents reaching Other < {other_target_frac*100:.2f}%; "
+            #    f"need {needed_top} rows but only {max_top_cap} allowed before Other."
+            #)
+        else:
+            final_top = needed_top
+
+    top = eligible[:final_top]
+    shown_sum = sum(r[1] for r in top)
+    other_count = total - shown_sum
+    other_percent = (other_count / total) * 100.0
+
+    # Count how many rows are aggregated into Other: everything not in 'top'
+    other_rows_count = len(rows_in) - len(top)
+
+    # Build output: preserve extras; write percent at index 2 as a numeric percent 0..100
+    rows_out = [set_percent(r, (r[1] / total) * 100.0) for r in top]
+
+    # Build the Other row with percent; no extra fields beyond the percent
+    rows_out.append((f"{other_label}({other_rows_count})", other_count, round(other_percent, 2)))
+
+    #if other_percent >= other_target_frac * 100.0:
+        #notes.append(
+        #    f"Other is {other_percent:.2f}%, which is not strictly below {other_target_frac*100:.2f}% "
+        #    f"(MIN_COUNT={min_count}, MAX_TOTAL_ROWS={max_total_rows})."
+        #)
+
+    return rows_out, total, " ".join(notes) if notes else None
+    	
+def render_sub_table(table_title, table_headers, found_values, get_character=None, show_all=True):
 	#Check if any data provided
 	if len(found_values) != 0:
 		# Get the total
@@ -878,31 +994,37 @@ def render_sub_table(table_title, table_headers, found_values, get_character=Non
 				raise ValueError("found_values must be either a list of numbers or a list of dictionaries.")
 		else:
 			raise TypeError("found_values must be a dictionary or a list.")
-		sub_result.sort(key=lambda x: float(x[1]), reverse=True)  # Sort by percentage in descending order
 
-		# Dynamic threshold calculation
-		if not suppress_threshold:
-			dynamic_threshold = max(1, 100 / (original_total**0.5)) if original_total > 0 else 0
-			dynamic_threshold = round(dynamic_threshold,1)
-			logging.debug(f"Threshold for {table_title} set to {dynamic_threshold}% ")
-		else:
-			dynamic_threshold=0
-		absolute_floor = 50  # Minimum absolute value threshold
+		# # Dynamic threshold calculation
+		# if not suppress_threshold:
+			# dynamic_threshold = max(1, 100 / (original_total**0.65)) if original_total > 0 else 0
+			# dynamic_threshold = round(dynamic_threshold,1)
+			# logging.debug(f"Threshold for {table_title} set to {dynamic_threshold}% ")
+		# else:
+			# dynamic_threshold=0
+		# absolute_floor = 10  # Minimum absolute value threshold
 
-		# Filter results using early termination
-		filtered_sub_result = []
-		for row in sub_result:
-			value = row[1]
-			percentage = (value / original_total * 100) if original_total else 0
+		# # Filter results using early termination
+		# filtered_sub_result = []
+		# for row in sub_result:
+			# value = row[1]
+			# percentage = (value / original_total * 100) if original_total else 0
 			
-			# Exit condition: below both thresholds
-			if percentage < dynamic_threshold and value < absolute_floor:
-				break
+			# # Exit condition: below both thresholds
+			# if percentage < dynamic_threshold or value < absolute_floor:
+				# break
 				
-			filtered_sub_result.append(row)
+			# filtered_sub_result.append(row)
 		
-		sub_result = filtered_sub_result  # Keep only significant rows
+		# sub_result = filtered_sub_result  # Keep only significant rows
 
+		sub_result.sort(key=lambda x: float(x[1]), reverse=True)  # Sort by percentage in descending order
+		if not show_all:
+			sub_result, total, note = select_rows_just_below(sub_result,show_all=False)
+		else:
+			note = "" #no threshold applied
+			total = original_total
+		
 		sub_template_path = template_dir+'mailstats-sub-table.html.pt'
 		# Load the template
 		with open(sub_template_path, 'r') as template_file:
@@ -914,7 +1036,7 @@ def render_sub_table(table_title, table_headers, found_values, get_character=Non
 			try:
 				rendered_html = template(array_2d=sub_result, column_headers=table_headers, 
 										title=table_title, classname=get_first_word(table_title),
-										threshold=dynamic_threshold)
+										threshold=note)
 			except Exception as e:
 				raise ValueError(f"{table_title}: A chameleon controller render error occurred: {e}")
 		except Exception as e:
@@ -1673,7 +1795,10 @@ if __name__ == "__main__":
 					rejReason = match.group(1)
 					found_qpcodes[parsed_data['error-plugin']+"-"+rejReason] += 1
 				else:
-					found_qpcodes[parsed_data['action1']] += 1
+					if parsed_data['action1'] == "":
+						logging.warning(f"Found blank action1 {timestamp} {parsed_data['id']} {parsed_data['ip']} {parsed_data['sendurl']}")
+					else:
+						found_qpcodes[parsed_data['action1']] += 1
 
 			#Check for blacklist rejection
 			error_plugin = parsed_data['error-plugin'].strip()
@@ -1709,6 +1834,8 @@ if __name__ == "__main__":
 				else:
 					email = None
 			if email:
+				if '@' in email:
+					email = email.lower()
 				record = next((item for item in recipients_found if item['email'] == email), None)
 				if not record:
 					# If email is not in the array, we add it
@@ -1821,6 +1948,7 @@ if __name__ == "__main__":
 			try:
 				match = geoip_pattern.match(data['MESSAGE'])
 				if match:
+					logging.debug(f"Found bad country message {data['MESSAGE']} {match.group(1)} ")
 					j += 1
 					country = match.group(1)
 					found_countries[country] += 1
@@ -1928,7 +2056,7 @@ if __name__ == "__main__":
 	#virus codes
 	virus_headers = ["Virus",'Count','Percent']
 	virus_title = 'Viruses found'
-	virus_rendered_html = render_sub_table(virus_title,virus_headers,found_viruses,suppress_threshold=True)
+	virus_rendered_html = render_sub_table(virus_title,virus_headers,found_viruses)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,virus_rendered_html, "<!---Add in sub tables here -->")
 
@@ -1944,7 +2072,7 @@ if __name__ == "__main__":
 	junk_mail_count_headers = ['Username','Count', 'Percent']
 	junk_mail_counts = scan_mail_users()
 	junk_mail_count_title = 'Junk mail counts'
-	junk_rendered_html = render_sub_table(junk_mail_count_title,junk_mail_count_headers,junk_mail_counts,suppress_threshold=True)
+	junk_rendered_html = render_sub_table(junk_mail_count_title,junk_mail_count_headers,junk_mail_counts)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,junk_rendered_html, "<!---Add in sub tables here -->")
 
@@ -1952,21 +2080,21 @@ if __name__ == "__main__":
 	#Recipient counts
 	recipient_count_headers = ["Email",'Queued','Rejected','Spam tagged','Accepted Percent']
 	recipient_count_title = 'Incoming email recipients'
-	recipient_rendered_html = render_sub_table(recipient_count_title,recipient_count_headers,recipients_found,suppress_threshold=True)
+	recipient_rendered_html = render_sub_table(recipient_count_title,recipient_count_headers,recipients_found)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,recipient_rendered_html, "<!---Add in sub tables here -->")
 
 	#Geoip Country codes
 	geoip_headers  = ['Country','Count','Percent','Rejected?']
 	geoip_title = 'Geoip results'
-	geoip_rendered_html = render_sub_table(geoip_title,geoip_headers,found_countries,get_character_in_reject_list)
+	geoip_rendered_html = render_sub_table(geoip_title,geoip_headers,found_countries,get_character_in_reject_list,show_all=False)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,geoip_rendered_html, "<!---Add in sub tables here -->")
 	
 	#Blacklist counts
 	blacklist_headers = ['URL','Count','Percent']
 	blacklist_title = 'Blacklist used'
-	blacklist_rendered_html = render_sub_table(blacklist_title,blacklist_headers,blacklist_found,suppress_threshold=True)
+	blacklist_rendered_html = render_sub_table(blacklist_title,blacklist_headers,blacklist_found)
 	# Add it to the total 
 	total_html = insert_string_after(total_html,blacklist_rendered_html, "<!---Add in sub tables here -->")
 	

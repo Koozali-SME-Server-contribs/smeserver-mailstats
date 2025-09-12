@@ -6,7 +6,7 @@ Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
 %define version 11.1
-%define release 6
+%define release 7
 Version: %{version}
 Release: %{release}%{?dist}
 License: GPL
@@ -90,6 +90,10 @@ usermod -aG systemd-journal www
 /sbin/ldconfig
 
 %changelog
+* Fri Sep 12 2025 Brian Read <brianr@koozali.org> 11.1-7.sme
+- Truncate Geoip table and add other category [SME: 13121]
+- Cope with blank data in action1 [SME: 13121]
+
 * Thu Sep 04 2025 Brian Read <brianr@koozali.org> 11.1-6.sme
 - Add favicon to mailstats table, summary and detailed pages [SME: 13121]
 - Bring DB config reading for mailstats itself inline with php summary and detailed logs - using /etc/mailstats/db.php [SME: 13121]

@@ -1,7 +1,7 @@
 <div class="${classname}">
 <h2>${title}</h2>
 	<tal:block condition="threshold != 0">
-		<span class='greyed-out'>Display threshold set to ${threshold}%</span>
+		<span class='greyed-out'>${threshold}</span>
 	</tal:block>
 	<tal:block condition="threshold == 0">
 		<br>
