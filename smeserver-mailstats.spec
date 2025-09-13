@@ -6,7 +6,7 @@ Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
 %define version 11.1
-%define release 9
+%define release 10
 %define full_version %{version}.%{release})
 Version: %{version}
 Release: %{release}%{?dist}
@@ -88,7 +88,7 @@ chmod u+s /usr/bin/journalwrap
 /sbin/ldconfig
 
 %changelog
-* Fri Sep 12 2025 Brian Read <brianr@koozali.org> 11.1-9.sme
+* Fri Sep 12 2025 Brian Read <brianr@koozali.org> 11.1-10.sme
 - Fix version and build date from spec file  [SME: 13121]
 
 * Fri Sep 12 2025 Brian Read <brianr@koozali.org> 11.1-8.sme
