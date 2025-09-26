@@ -93,6 +93,14 @@ import json
 from systemd import journal
 import logging
 
+def extract_version(text):
+    # Regular expression to match version numbers with the format X.Y.Z (e.g., 11.1.10)
+    match = re.search(r'\b\d+\.\d+\.\d+\b', text)
+    if match:
+        return match.group(0)
+    return None
+
+
 # Configure logging
 log_dir_path = "/var/log/mailstats"
 # Check if the directory exists, and create it if it doesn't
@@ -111,11 +119,11 @@ except ImportError:
 	logging.warning("Matplotlib is not installed  - no graphs")
 	enable_graphs = False;
 
-Mailstats_version = '1.3'
-build_date_time = "2024-06-18 12:03:40OURCE" 
+Mailstats_version = '11.1.10.el8.sme)'
+build_date_time = "2025-09-13 10:10:12OURCE"
 #Take out the crap that sneaks in...
 build_date_time = build_date_time[:19]  
-Mailstats_version = Mailstats_version[:6]
+Mailstats_version = extract_version(Mailstats_version)
 
 #if build_date_time == "2024-06-18 12:03:40OURCE":
 #    build_date_time = "Unknown"
