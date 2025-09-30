@@ -10,36 +10,39 @@
 	$OUT .="\n";
 	$OUT .= qq(
 	# Alias for mailstats
-	Alias "/mailstats/js" "/opt/mailstats/js"
-	Alias "/mailstats/css" "/opt/mailstats/css"
-	Alias "/mailstats" "/opt/mailstats/html"
+	Alias "/mailstats/js" "/opt/mailstats/js/"
+	Alias "/mailstats/css" "/opt/mailstats/css/"
+	Alias "/mailstats" "/opt/mailstats/html/"
+	);
+	# $httpd_admin{ValidFrom} contains space-separated IPs or CIDRs
+	my $valid_from = ${'httpd-admin'}{ValidFrom} // "";
+	my $require_ip = $localAccess." ".join(" ", split(/[,\s]+/, $valid_from));
+	# Remove any /255.255.255.255 substrings
+	$require_ip =~ s{/255\.255\.255\.255}{}g;
 
+	$OUT .= qq(
 	<Directory "/opt/mailstats/html">
 		Options Indexes FollowSymLinks
 		AllowOverride None
-		Require all granted
-	);
-	$OUT .= (($mailstats{access} || 'private' ) eq "public" ) ?  "      Require all granted": "      Require ip $localAccess $externalSSLAccess";
-	$OUT .= qq(
+		Require ip $require_ip
+
 		<FilesMatch .php\$\>
 			SetHandler "proxy:unix:/var/run/php-fpm/php74.sock|fcgi://localhost"
 		</FilesMatch>
+
 	</Directory>
 
 	<Directory "/opt/mailstats/css">
 		AllowOverride None
-		Require all granted
+		Require ip $require_ip
 	</Directory>
 
 	<Directory "/opt/mailstats/js">
 		AllowOverride None
-		Require all granted
+		Require ip $require_ip
 	</Directory>
 	);
-
-  }
-    else 
-    {
+  } else {
       $OUT .= "# mailstats is disabled";
-    }
+  }
 }
