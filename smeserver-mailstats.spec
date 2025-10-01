@@ -80,7 +80,7 @@ install -Dpm 0755 journalwrap %{buildroot}%{_bindir}/journalwrap
 %post
 /sbin/ldconfig
 #Remove www from systemd-journal group as is potential security risk
-gpasswd -d  www systemd-journal
+#gpasswd -d  www systemd-journal
 # and set setuid bit for c wrapper called from log detail web page
 chmod u+s /usr/bin/journalwrap
 
