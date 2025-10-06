@@ -6,7 +6,7 @@ Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
 %define version 11.1
-%define release 12
+%define release 13
 %define full_version %{version}.%{release})
 Version: %{version}
 Release: %{release}%{?dist}
@@ -88,6 +88,9 @@ chmod u+s /usr/bin/journalwrap
 /sbin/ldconfig
 
 %changelog
+* Mon Oct 06 2025 Brian Read <brianr@koozali.org> 11.1-13.sme
+- Add UTF8 and avoid potential DB caching problems [SME: 13209]
+
 * Tue Sep 30 2025 Brian Read <brianr@koozali.org> 11.1-12.sme
 - Fix httpd conf fragment and add in ValidFrom Ips [SME: 13204]
 

@@ -7,11 +7,11 @@
 #
 use esmith::util;
 use esmith::util::network;
-use esmith::ConfigDB;
-use esmith::HostsDB;
-use esmith::AccountsDB;
+use esmith::ConfigDB::UTF8;
+use esmith::HostsDB::UTF8;
+use esmith::AccountsDB::UTF8;
 use esmith::NetworksDB;
-use esmith::DomainsDB;
+use esmith::DomainsDB::UTF8;
 
 use POSIX 'strftime';
 
@@ -96,7 +96,7 @@ use constant TRUE  => 1;
 	sub get_data_for_panel_CONFIG {
 		# Return a hash with the fields required which will be loaded into the shared data 
 		my $c = shift;
-		my $cdb = esmith::ConfigDB->open()   || die("Couldn't open config db");
+		my $cdb = esmith::ConfigDB::UTF8->open()   || die("Couldn't open config db");
 		my $key = 'mailstats';
 		my %ret = (
 			'Data1'=>'Data for CONFIG', #Example
@@ -171,7 +171,7 @@ use constant TRUE  => 1;
 		my $c = shift;
 		my $prefix_data = shift; #Data hash as parameter
 		my $ret = "";
-		my $cdb = esmith::ConfigDB->open()   || die("Couldn't open config db");
+		my $cdb = esmith::ConfigDB::UTF8->open()   || die("Couldn't open config db");
 		my $db = $cdb; #maybe one of the others
 		my $dbkey = 'mailstats';
 		# To make it write to DB as comment, delete this (regex) string in each if statement "TRUE\) \#copy or perform with value: .* e.g."

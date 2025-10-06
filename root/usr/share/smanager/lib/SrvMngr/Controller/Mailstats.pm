@@ -36,11 +36,11 @@ use Data::Dumper;
 
 use esmith::util;
 use esmith::util::network;
-use esmith::ConfigDB;
-use esmith::AccountsDB;
+use esmith::ConfigDB::UTF8;
+use esmith::AccountsDB::UTF8;
 use esmith::NetworksDB;
-use esmith::HostsDB;
-use esmith::DomainsDB;
+use esmith::HostsDB::UTF8;
+use esmith::DomainsDB::UTF8;
 
 my $cdb;
 my $adb;
@@ -66,11 +66,11 @@ sub main {
     $c->app->log->info( $c->log_req );
 
 	#The most common ones
-	 $cdb = esmith::ConfigDB->open()   || die("Couldn't open config db");
-	 $adb = esmith::AccountsDB->open() || die("Couldn't open Accounts db");
+	 $cdb = esmith::ConfigDB::UTF8->open()   || die("Couldn't open config db");
+	 $adb = esmith::AccountsDB::UTF8->open() || die("Couldn't open Accounts db");
 	 $ndb = esmith::NetworksDB->open() || die("Couldn't open Network db");
-	 $hdb = esmith::HostsDB->open() 	  || die("Couldn't open Hosts db");
-	 $ddb = esmith::DomainsDB->open()  || die("Couldn't open Domains db");
+	 $hdb = esmith::HostsDB::UTF8->open() 	  || die("Couldn't open Hosts db");
+	 $ddb = esmith::DomainsDB::UTF8->open()  || die("Couldn't open Domains db");
 
     my %mst_data = ();
     my $title = $c->l('mst_Mailstats');
@@ -118,11 +118,11 @@ sub do_update {
 	my $modul = '';
 
 	#The most common ones - you might want to comment out any not used.
-	$cdb = esmith::ConfigDB->open()   || die("Couldn't open config db");
-	$adb = esmith::AccountsDB->open() || die("Couldn't open Accounts db");
+	$cdb = esmith::ConfigDB::UTF8->open()   || die("Couldn't open config db");
+	$adb = esmith::AccountsDB::UTF8->open() || die("Couldn't open Accounts db");
 	$ndb = esmith::NetworksDB->open() || die("Couldn't open Network db");
-	$hdb = esmith::HostsDB->open() 	  || die("Couldn't open Hosts db");
-	$ddb = esmith::DomainsDB->open()  || die("Couldn't open Domains db");
+	$hdb = esmith::HostsDB::UTF8->open() 	  || die("Couldn't open Hosts db");
+	$ddb = esmith::DomainsDB::UTF8->open()  || die("Couldn't open Domains db");
 
     my %mst_data = ();
     my $title = $c->l('mst_Mailstats');
@@ -225,18 +225,18 @@ sub do_display {
     $c->app->log->info($c->log_req);
 
 	#The most common ones - you might want to comment out any not used.
-	$cdb = esmith::ConfigDB->open()   || die("Couldn't open config db");
-	$adb = esmith::AccountsDB->open() || die("Couldn't open Accounts db");
+	$cdb = esmith::ConfigDB::UTF8->open()   || die("Couldn't open config db");
+	$adb = esmith::AccountsDB::UTF8->open() || die("Couldn't open Accounts db");
 	$ndb = esmith::NetworksDB->open() || die("Couldn't open Network db");
-	$hdb = esmith::HostsDB->open() 	  || die("Couldn't open Hosts db");
-	$ddb = esmith::DomainsDB->open()  || die("Couldn't open Domains db");
+	$hdb = esmith::HostsDB::UTF8->open() 	  || die("Couldn't open Hosts db");
+	$ddb = esmith::DomainsDB::UTF8->open()  || die("Couldn't open Domains db");
     
     my %mst_data = ();
     my $title = $c->l('mst_Mailstats');
     my $modul = "";
 
 	# Accessing all parameters
-    my %params = $c->req->params->to_hash;
+	my %params = %{ $c->req->params->to_hash };
 
     # Get number of parameters
     my $num_params = keys %params;
