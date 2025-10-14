@@ -236,6 +236,8 @@ sub do_display {
     my $modul = "";
 
 	# Accessing all parameters
+
+	
 	my %params = %{ $c->req->params->to_hash };
 
     # Get number of parameters
@@ -244,10 +246,10 @@ sub do_display {
     #Tag as Post or Get (ie. create new entry or edit existing one
     my $is_new_record = ($c->req->method() eq 'POST');
     
-    #Params are available in the hash "params" - copy to the prefix_data hash
-    #while (my ($key, $value) = each %{$c->req->params->to_hash}) {
-    #    $mst_data{$key} = $value;
-    #}
+    Params are available in the hash "params" - copy to the prefix_data hash
+    while (my ($key, $value) = each %{$c->req->params->to_hash}) {
+        $mst_data{$key} = $value;
+    }
 
     # the value of trt will tell you which panel has returned   
     if (! $trt){ 

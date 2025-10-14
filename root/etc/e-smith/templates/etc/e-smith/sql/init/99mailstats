@@ -16,8 +16,8 @@
 		Hour INT,
 		logData TEXT
 	);
-	CREATE USER $user@localhost IDENTIFIED BY '$pass';
-	GRANT SELECT, INSERT, UPDATE, DELETE ON $db.* TO $user@localhost;
+	CREATE USER {$user}@localhost IDENTIFIED BY '{$pass}';
+	GRANT SELECT, INSERT, UPDATE, DELETE ON $db.* TO {$user}@localhost;
 	FLUSH PRIVILEGES;
 EOF
 END
