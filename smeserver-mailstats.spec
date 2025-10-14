@@ -89,7 +89,7 @@ chmod u+s /usr/bin/journalwrap
 
 %changelog
 * Tue Oct 14 2025 Brian Read <brianr@koozali.org> 11.1-14.sme
-- fix [SME: ]
+- Sort out perl variables in SQL init script  [SME: 13233]
 
 * Mon Oct 06 2025 Brian Read <brianr@koozali.org> 11.1-13.sme
 - Add UTF8 and avoid potential DB caching problems [SME: 13209]
