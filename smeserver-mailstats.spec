@@ -6,7 +6,7 @@ Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
 %define version 11.1
-%define release 14
+%define release 15
 %define full_version %{version}.%{release})
 Version: %{version}
 Release: %{release}%{?dist}
@@ -88,8 +88,9 @@ chmod u+s /usr/bin/journalwrap
 /sbin/ldconfig
 
 %changelog
-* Tue Oct 14 2025 Brian Read <brianr@koozali.org> 11.1-14.sme
-- Sort out perl variables in SQL init script  [SME: 13233]
+* Thu Oct 16 2025 Brian Read <brianr@koozali.org> 11.1-15.sme
+- Revert to 11.1-13 [SME: 13233]
+- Add "\" to escape @ in SQL script for db init  [SME: 13233]
 
 * Mon Oct 06 2025 Brian Read <brianr@koozali.org> 11.1-13.sme
 - Add UTF8 and avoid potential DB caching problems [SME: 13209]
