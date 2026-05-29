@@ -6,7 +6,7 @@ Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
 %define version 11.1
-%define release 15
+%define release 16
 %define full_version %{version}.%{release})
 Version: %{version}
 Release: %{release}%{?dist}
@@ -88,6 +88,11 @@ chmod u+s /usr/bin/journalwrap
 /sbin/ldconfig
 
 %changelog
+* Fri May 29 2026 Jean-Philippe Pialasse <jpp@koozali.org> 11.1-16.sme
+- fix mariadb user related issues [SME: 13233]
+- adapt html box to full size of content [SME: 13554]
+- prevent firefox auto filling password
+
 * Thu Oct 16 2025 Brian Read <brianr@koozali.org> 11.1-15.sme
 - Revert to 11.1-13 [SME: 13233]
 - Add "\" to escape @ in SQL script for db init  [SME: 13233]

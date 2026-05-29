@@ -4,9 +4,8 @@
     my $pass = $mailstats{DBPass} || 'changeme';
     $OUT .= <<END
 #! /bin/sh
-    if [ -d /var/lib/mysql/mailstats ]; then
-      exit
-    fi
+
+    if [ ! -d /var/lib/mysql/mailstats ]; then
     /usr/bin/mariadb <<EOF
     CREATE DATABASE $db DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
     USE $db;
@@ -16,9 +15,11 @@
 		Hour INT,
 		logData TEXT
 	);
-	CREATE USER $user\@localhost IDENTIFIED BY '$pass';
-	GRANT SELECT, INSERT, UPDATE, DELETE ON $db.* TO $user\@localhost;
-	FLUSH PRIVILEGES;
+EOF
+    fi
+    /usr/bin/mariadb <<EOF
+    GRANT SELECT, INSERT, UPDATE, DELETE ON $db.* TO $user\@localhost identified by '$pass';
+    FLUSH PRIVILEGES;
 EOF
 END
 }

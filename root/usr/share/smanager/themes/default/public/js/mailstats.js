@@ -222,3 +222,35 @@ function updateState(target, enabled) {
     target.style.filter = enabled ? 'none' : 'grayscale(50%)';
     target.setAttribute('aria-disabled', !enabled);
 }
+
+// Wait for the main page DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', () => {
+  const obj = document.getElementById('mailstats_object');
+
+  // Check if the object exists on the current page
+  if (obj) {
+    // Function to calculate and apply the height
+    const ajusterHauteur = () => {
+      try {
+        const docInterne = obj.contentDocument || obj.contentWindow.document;
+        if (docInterne) {
+          // Get the actual height of the internal content
+          const hauteurContenu = docInterne.documentElement.scrollHeight;
+          // Apply the height with a small safety margin
+          obj.style.height = (hauteurContenu + 20) + 'px';
+        }
+      } catch (e) {
+        console.warn("CSP / Security: Unable to access the object content.", e);
+      }
+    };
+
+    // Listen for the object's load event
+    obj.addEventListener('load', ajusterHauteur);
+
+    // Fallback: if the object was already loaded before the script execution
+    if (obj.contentDocument && obj.contentDocument.readyState === 'complete') {
+      ajusterHauteur();
+    }
+  }
+});
+
