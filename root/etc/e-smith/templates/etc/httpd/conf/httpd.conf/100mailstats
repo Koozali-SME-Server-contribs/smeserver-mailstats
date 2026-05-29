@@ -22,6 +22,7 @@
 
 	$OUT .= qq(
 	<Directory "/opt/mailstats/html">
+		Header always set Content-Security-Policy "Content-Security-Policy: frame-ancestors 'self';"
 		Options Indexes FollowSymLinks
 		AllowOverride None
 		Require ip $require_ip
