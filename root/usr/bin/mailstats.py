@@ -272,7 +272,8 @@ def get_logs_from_Journalctl(date='yesterday'):
         logs = []
         log_count = 0
         error_count = 0
-
+        # Tolerate minor clock skew / out-of-order merging between unit streams.
+        SKEW_TOLERANCE_US = 5 * 60 * 1_000_000  # 5 minutes
         for entry in j:
             try:
                 entry_timestamp = entry.get("__REALTIME_TIMESTAMP", None)
@@ -280,9 +281,12 @@ def get_logs_from_Journalctl(date='yesterday'):
                 if entry_microseconds is None:
                     continue
 
-                # Early stop once we pass the end of the window
-                if entry_microseconds > until_microseconds:
+                # Skip entries just past the window, but only stop once we are
+                # clearly beyond it so a single bad timestamp cannot truncate the day.
+                if entry_microseconds > until_microseconds + SKEW_TOLERANCE_US:
                     break
+                if entry_microseconds > until_microseconds:
+                    continue
 
                 if entry_microseconds >= since_microseconds:
                     log_count += 1
@@ -313,8 +317,16 @@ def get_logs_from_Journalctl(date='yesterday'):
         # Sort logs by __REALTIME_TIMESTAMP in ascending order (keep original behavior)
         sorted_logs = sorted(logs, key=lambda x: to_us(x.get("__REALTIME_TIMESTAMP")) or 0)
 
-        logging.debug(f"Collected {len(sorted_logs)} entries for {since_dt.date()} "
-                      f"between {since_dt} and {until_dt} (scanned {log_count} in-window)")
+        # INFO-level diagnostics (visible without --debug): how many entries were
+        # retained and their hourly spread, so missing-morning issues are visible.
+        hourly_counts = defaultdict(int)
+        for e in sorted_logs:
+            ts = to_us(e.get("__REALTIME_TIMESTAMP"))
+            if ts is not None:
+                hourly_counts[datetime.fromtimestamp(ts / 1_000_000).hour] += 1
+        logging.info(f"Collected {len(sorted_logs)} entries for {since_dt.date()} "
+                     f"(scanned {log_count} in-window; hourly: "
+                     f"{dict(sorted(hourly_counts.items()))})")
 
         return sorted_logs
 

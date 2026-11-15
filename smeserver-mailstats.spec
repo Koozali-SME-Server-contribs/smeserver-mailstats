@@ -95,6 +95,9 @@ chmod u+s /usr/bin/journalwrap
 - Spam blacklist result was ignored because the blacklist domain was looked for in
 -  the sender address instead of the reject reason text; scan the reject reason
 -  (error-msg/error-reason) for the blacklist domain [SME: 13216]
+- Busy mailserver could miss early-morning details; journal read now tolerates minor
+-  clock skew instead of truncating the day, and logs an INFO hourly distribution of
+-  collected entries to make any loss visible [SME: 13452]
 
 * Sun Nov 15 2026 Brian Read <brianr@koozali.org> 11.1-18.sme
 - Quote delimiters in DB password create, move to (more) truly random generator for password  [SME: 13826]
