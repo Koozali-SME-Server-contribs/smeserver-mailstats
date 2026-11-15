@@ -892,8 +892,9 @@ def select_rows_just_below(items, min_count=MIN_COUNT,
         return rows_
 
     def set_percent(row, pct_value):
-        # Return a tuple like the input row but with percent inserted at index 2 (0..100 number, rounded)
-        pct_value = round(pct_value, 2)
+        # Return a tuple like the input row but with percent inserted at index 2
+        # ('NN.NN%'), matching the '%' format used by the other sub-tables.
+        pct_value = f"{round(pct_value, 2)}%"
         r = list(row)
         if len(r) >= 3:
             r[2] = pct_value
@@ -905,7 +906,7 @@ def select_rows_just_below(items, min_count=MIN_COUNT,
 
     total = sum(r[1] for r in rows_in)
     if total == 0:
-        return ([(f"{other_label}(0)", 0, 0.0)] if not show_all else []), 0, "No data."
+        return ([(f"{other_label}(0)", 0, "0.0%")] if not show_all else []), 0, "No data."
 
     # Filter by min_count and sort by count desc
     eligible = [r for r in rows_in if r[1] >= min_count]
@@ -962,7 +963,7 @@ def select_rows_just_below(items, min_count=MIN_COUNT,
     rows_out = [set_percent(r, (r[1] / total) * 100.0) for r in top]
 
     # Build the Other row with percent; no extra fields beyond the percent
-    rows_out.append((f"{other_label}({other_rows_count})", other_count, round(other_percent, 2)))
+    rows_out.append((f"{other_label}({other_rows_count})", other_count, f"{round(other_percent, 2)}%"))
 
     #if other_percent >= other_target_frac * 100.0:
         #notes.append(

@@ -95,6 +95,8 @@ chmod u+s /usr/bin/journalwrap
 - Spam blacklist result was ignored because the blacklist domain was looked for in
 -  the sender address instead of the reject reason text; scan the reject reason
 -  (error-msg/error-reason) for the blacklist domain [SME: 13216]
+- Geoip sub-table percentage lost its '%' sign when only top rows were shown; keep
+-  the percent sign in the numeric percent cells of select_rows_just_below [SME: 13422]
 - Busy mailserver could miss early-morning details; journal read now tolerates minor
 -  clock skew instead of truncating the day, and logs an INFO hourly distribution of
 -  collected entries to make any loss visible [SME: 13452]
