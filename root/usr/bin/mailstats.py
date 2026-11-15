@@ -1599,7 +1599,7 @@ if __name__ == "__main__":
 	#print(f"{sorted_log_dict}")
 	#quit(1)
 
-	columnHeaders = ['Count','WebMail','Local','MailMan','Relay','DMARC','Virus','RBL/DNS','Geoip.','Non.Conf.','Karma','Rej.Load','Del.Spam','Qued.Spam?','  Ham','TOTALS','PERCENT']
+	columnHeaders = ['Count','WebMail','Local','MailMan','Relay','DMARC','Virus','RBL/DNS','Geoip.','Non.Conf.','Rej.Load','Karma','Del.Spam','Qued.Spam?','  Ham','TOTALS','PERCENT']
 	# dict for each colum identifying plugin that increments count
 	columnPlugin = [''] * 17
 	columnPlugin[Hour] = [] 
@@ -1794,8 +1794,8 @@ if __name__ == "__main__":
 					columnCounts_2d[hour][RBLDNS]+= 1
 					columnCounts_2d[ColTotals][RBLDNS]+= 1
 				elif parsed_data['error-msg'].startswith("(karma)"):
-					columnCounts_2d[hour][KARMA] += 1
-					columnCounts_2d[ColTotals][KARMA]+= 1
+					columnCounts_2d[hour][Karma] += 1
+					columnCounts_2d[ColTotals][Karma]+= 1
 				elif parsed_data['error-msg'].startswith("(helo)"):
 					columnCounts_2d[hour][RBLDNS] += 1
 					columnCounts_2d[ColTotals][RBLDNS]+= 1

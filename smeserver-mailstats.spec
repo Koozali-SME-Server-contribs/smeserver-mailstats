@@ -6,7 +6,7 @@ Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
 %define version 11.1
-%define release 18
+%define release 19
 %define full_version %{version}.%{release})
 Version: %{version}
 Release: %{release}%{?dist}
@@ -88,6 +88,10 @@ chmod u+s /usr/bin/journalwrap
 /sbin/ldconfig
 
 %changelog
+* Sun Nov 15 2026 Brian Read <brianr@koozali.org> 11.1-19.sme
+- Reject for loadcheck and Karma columns are reversed; align displayed column headers
+-  with the numeric column indices and fix the undefined KARMA name [SME: 13738]
+
 * Sun Nov 15 2026 Brian Read <brianr@koozali.org> 11.1-18.sme
 - Quote delimiters in DB password create, move to (more) truly random generator for password  [SME: 13826]
 - Add db/configuration/migrate/90DBGrant fragment to apply CREATE privilege to
