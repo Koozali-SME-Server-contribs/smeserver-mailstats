@@ -92,6 +92,9 @@ chmod u+s /usr/bin/journalwrap
 - Reject for loadcheck and Karma columns are reversed; align displayed column headers
 -  with the numeric column indices and fix the undefined KARMA name [SME: 13738]
 - Add Mailstats version and build date to the Email System Status table [SME: 13197]
+- Spam blacklist result was ignored because the blacklist domain was looked for in
+-  the sender address instead of the reject reason text; scan the reject reason
+-  (error-msg/error-reason) for the blacklist domain [SME: 13216]
 
 * Sun Nov 15 2026 Brian Read <brianr@koozali.org> 11.1-18.sme
 - Quote delimiters in DB password create, move to (more) truly random generator for password  [SME: 13826]

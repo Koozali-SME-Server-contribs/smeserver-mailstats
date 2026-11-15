@@ -1817,7 +1817,11 @@ if __name__ == "__main__":
 			#Check for blacklist rejection
 			error_plugin = parsed_data['error-plugin'].strip()
 			if  error_plugin == 'rhsbl' or error_plugin == 'dnsbl':
-				blacklist_domain = extract_blacklist_domain(parsed_data['sender'])
+				# The blacklist domain is reported in the reject reason text
+				# (e.g. "(dnsbl) ... See: http://<list>/..."), not in the sender.
+				blacklist_domain = extract_blacklist_domain(parsed_data['error-msg'])
+				if not blacklist_domain:
+					blacklist_domain = extract_blacklist_domain(parsed_data['error-reason'])
 				if blacklist_domain:
 					blacklist_found[blacklist_domain] += 1
 			
