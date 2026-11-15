@@ -6,3 +6,4 @@
 *.html
 *.txt
 *el8*
+*pycache*
