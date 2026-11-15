@@ -1,16 +1,35 @@
 {
-    use MIME::Base64 qw(encode_base64);
-
     my $rec = $DB->get('mailstats') || $DB->new_record('mailstats', {type => 'report'});
 
     my $pw = $rec->prop('DBPass');
     return "" if $pw;
 
-    my $length = shift || 16; 
+    my $length = shift // 16;
 
-    my @chars = ('A'..'Z', 'a'..'z', 0..9, qw(! @ $ % ^ & * ? _ - + =));
+    # Alphabet deliberately avoids characters that break downstream consumers of the
+    # password: no '$' (shell here-doc / env expansion), no '\' / backtick / quote,
+    # no '@' (collides with the SQL GRANT host token), no "'" (string literals).
+    my @chars = split //,
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!%^&*?_-+=';
+
+    # Cryptographic randomness from the kernel entropy pool. Perl's rand() is NOT a
+    # CSPRNG and must not be used to generate credentials.
+    open my $fh, '<:raw', '/dev/urandom'
+        or die "cannot open /dev/urandom: $!\n";
+
+    my $n     = scalar @chars;
+    my $limit = 256 - (256 % $n);   # reject bytes >= a multiple of $n (avoid modulo bias)
+
     $pw = '';
-    $pw  .= $chars[rand @chars] for 1..$length;
+    while (length($pw) < $length) {
+        my $got = read $fh, my $byte, 1;
+        die "short read from /dev/urandom\n" unless defined $got && $got == 1;
+        my $v = ord($byte);
+        next if $v >= $limit;
+        $pw .= $chars[$v % $n];
+    }
+    close $fh;
+
     $rec->set_prop('DBPass', $pw);
     return ""
 }

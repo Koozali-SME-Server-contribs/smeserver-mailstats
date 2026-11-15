@@ -6,7 +6,7 @@
 #! /bin/sh
 
     if [ ! -d /var/lib/mysql/mailstats ]; then
-    /usr/bin/mariadb <<EOF
+    /usr/bin/mariadb <<'EOF'
     CREATE DATABASE $db DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
     USE $db;
 	CREATE TABLE IF NOT EXISTS SummaryLogs (
@@ -17,8 +17,8 @@
 	);
 EOF
     fi
-    /usr/bin/mariadb <<EOF
-    GRANT SELECT, INSERT, UPDATE, DELETE ON $db.* TO $user\@localhost identified by '$pass';
+    /usr/bin/mariadb <<'EOF'
+    GRANT SELECT, INSERT, UPDATE, DELETE, CREATE ON $db.* TO $user\@localhost identified by '$pass';
     FLUSH PRIVILEGES;
 EOF
 END

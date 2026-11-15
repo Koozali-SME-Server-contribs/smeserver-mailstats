@@ -6,7 +6,7 @@ Summary: Daily mail statistics for SME Server
 %define name smeserver-mailstats
 Name: %{name}
 %define version 11.1
-%define release 17
+%define release 18
 %define full_version %{version}.%{release})
 Version: %{version}
 Release: %{release}%{?dist}
@@ -88,6 +88,11 @@ chmod u+s /usr/bin/journalwrap
 /sbin/ldconfig
 
 %changelog
+* Sun Nov 15 2026 Brian Read <brianr@koozali.org> 11.1-18.sme
+- Quote delimiters in DB password create, move to (more) truly random generator for password  [SME: 13826]
+- Add db/configuration/migrate/90DBGrant fragment to apply CREATE privilege to
+-  mailstats_rw on existing installs (sql/init is one-shot) [SME: 13827]
+
 * Fri May 29 2026 Jean-Philippe Pialasse <jpp@koozali.org> 11.1-17.sme
 - CSP frame-ancestors for mailstat [SME: 13555]
 

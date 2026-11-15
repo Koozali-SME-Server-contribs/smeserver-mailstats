@@ -1,0 +1,24 @@
+{
+    my $rec = $DB->get('mailstats');
+    return "" unless $rec;
+
+    my $db   = $rec->prop('DBName') || 'mailstats';
+    my $user = $rec->prop('DBUser') || 'mailstats_rw';
+    my $pass = $rec->prop('DBPass') || 'changeme';
+
+    # Escape single quotes for the SQL string literal (defensive; the generated
+    # password never contains them anyway).
+    $pass =~ s/'/''/g;
+
+    # Issue the grants. Use the list form of system() so the SQL is passed to
+    # mariadb as a single argument (no shell interpretation of special chars).
+    my $sql = << "SQL";
+CREATE USER IF NOT EXISTS '$user'\@'localhost' IDENTIFIED BY '$pass';
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE ON \`$db\`.* TO '$user'\@'localhost';
+FLUSH PRIVILEGES;
+SQL
+
+    system('/usr/bin/mariadb', '-e', $sql);
+
+    return "";
+}
