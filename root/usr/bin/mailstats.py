@@ -1186,6 +1186,10 @@ def get_heading():
 	tag_reject_info = assemble_heading_row("Tag level:",SATagLevel) 
 	tag_reject_info += assemble_heading_row("Reject level: ",f"{SARejectLevel} {warnnoreject}")
 
+	# Mailstats version and build date
+	mailstats_version_info = assemble_heading_row("Mailstats version:", Mailstats_version)
+	mailstats_version_info += assemble_heading_row("Mailstats build:", build_date_time)
+
 	# SMTP connection stats
 	smtp_stats = assemble_heading_row("External SMTP connections accepted:",totalexternalsmtpsessions)
 	smtp_stats +=  assemble_heading_row("Internal SMTP connections accepted:",totalinternalsmtpsessions)
@@ -1217,7 +1221,7 @@ def get_heading():
 	#header_str = "<br />".join([clam_info, sa_info, tag_reject_info, smtp_stats, dmarc_info])
 	# switch newlines to <br />
 	#header_str = header_str.replace("\n","<br />")
-	header_str1 = clam_info + sa_info + tag_reject_info
+	header_str1 = clam_info + sa_info + tag_reject_info + mailstats_version_info
 	header_str2 = smtp_stats + dmarc_info
 	return header_str1,header_str2
 	
