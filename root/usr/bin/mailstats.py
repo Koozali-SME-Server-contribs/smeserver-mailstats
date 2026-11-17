@@ -324,9 +324,9 @@ def get_logs_from_Journalctl(date='yesterday'):
             ts = to_us(e.get("__REALTIME_TIMESTAMP"))
             if ts is not None:
                 hourly_counts[datetime.fromtimestamp(ts / 1_000_000).hour] += 1
-        logging.info(f"Collected {len(sorted_logs)} entries for {since_dt.date()} "
-                     f"(scanned {log_count} in-window; hourly: "
-                     f"{dict(sorted(hourly_counts.items()))})")
+        #logging.info(f"Collected {len(sorted_logs)} entries for {since_dt.date()} "
+        #             f"(scanned {log_count} in-window; hourly: "
+        #             f"{dict(sorted(hourly_counts.items()))})")
 
         return sorted_logs
 
@@ -1835,6 +1835,8 @@ if __name__ == "__main__":
 				blacklist_domain = extract_blacklist_domain(parsed_data['error-msg'])
 				if not blacklist_domain:
 					blacklist_domain = extract_blacklist_domain(parsed_data['error-reason'])
+				if not blacklist_domain:
+					blacklist_domain = extract_blacklist_domain(parsed_data['sender'])
 				if blacklist_domain:
 					blacklist_found[blacklist_domain] += 1
 			
